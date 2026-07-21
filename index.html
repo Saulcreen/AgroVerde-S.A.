@@ -3,27 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AgroVerde S.A. — Simulación IoT 3D</title>
+<title>AgroVerde S.A. — Campo de 12 Hectáreas</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
   :root{
-    --soil:#5b4636;
-    --soil-dark:#3d3025;
-    --leaf:#3f7d3a;
-    --leaf-2:#6ea852;
-    --sky-top:#bfe3f0;
-    --sky-bottom:#f2e4c9;
     --tech:#22d3c7;
-    --tech-dim:#0e7c74;
-    --amber:#f2a541;
-    --red:#e2543f;
-    --panel-bg:rgba(18,26,22,0.82);
+    --panel-bg:rgba(18,26,22,0.78);
     --panel-border:rgba(34,211,199,0.28);
     --ink:#eef4ef;
     --ink-dim:#9fb3a8;
   }
-
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;
     font-family:'Space Grotesk',sans-serif;background:#0c1210;color:var(--ink);}
@@ -32,8 +22,7 @@
   #c.dragging{cursor:grabbing;}
 
   #header{
-    position:fixed;top:18px;left:18px;z-index:5;max-width:360px;
-    pointer-events:none;
+    position:fixed;top:18px;left:18px;z-index:5;max-width:360px;pointer-events:none;
   }
   #header .eyebrow{
     font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;
@@ -43,52 +32,6 @@
     text-shadow:0 2px 12px rgba(0,0,0,.5);}
   #header p{margin:0;font-size:12.5px;color:var(--ink-dim);line-height:1.4;
     text-shadow:0 1px 8px rgba(0,0,0,.5);}
-
-  #hud{
-    position:fixed;top:18px;right:18px;z-index:5;width:300px;
-    background:var(--panel-bg);border:1px solid var(--panel-border);
-    border-radius:14px;backdrop-filter:blur(10px);
-    box-shadow:0 12px 40px rgba(0,0,0,.45);
-  }
-  #hud .hud-head{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);
-  }
-  #hud .hud-head span.dot{
-    display:inline-block;width:7px;height:7px;border-radius:50%;
-    background:var(--tech);margin-right:8px;box-shadow:0 0 8px var(--tech);
-    animation:pulse 1.6s ease-in-out infinite;
-  }
-  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
-  #hud .hud-head b{font-size:12px;letter-spacing:1px;text-transform:uppercase;font-weight:600;}
-  #hud .hud-head small{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-dim);}
-
-  #stations{max-height:250px;overflow-y:auto;padding:6px 10px;}
-  .station-row{
-    padding:9px 6px;border-bottom:1px dashed rgba(255,255,255,.08);
-    font-family:'IBM Plex Mono',monospace;
-  }
-  .station-row:last-child{border-bottom:none;}
-  .station-row .name{font-size:11.5px;color:var(--tech);font-weight:600;margin-bottom:4px;
-    display:flex;justify-content:space-between;}
-  .station-row .metrics{display:flex;gap:10px;font-size:11px;color:var(--ink);}
-  .station-row .metrics span b{color:var(--ink-dim);font-weight:400;}
-  .station-row.alert .name{color:var(--red);}
-  .station-row.warn .name{color:var(--amber);}
-
-  #alerts{
-    border-top:1px solid rgba(255,255,255,.08);padding:10px 14px 12px;
-  }
-  #alerts .title{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;
-    color:var(--ink-dim);margin-bottom:6px;}
-  #alertList{list-style:none;margin:0;padding:0;max-height:110px;overflow-y:auto;}
-  #alertList li{
-    font-size:11.5px;padding:5px 8px;margin-bottom:5px;border-radius:8px;
-    background:rgba(226,84,63,.12);border:1px solid rgba(226,84,63,.3);color:#ffd9d0;
-    line-height:1.3;
-  }
-  #alertList li.warn{background:rgba(242,165,65,.12);border-color:rgba(242,165,65,.3);color:#ffe6bd;}
-  #alertList .empty{color:var(--ink-dim);background:none;border:none;}
 
   #controls{
     position:fixed;bottom:18px;left:18px;z-index:5;display:flex;gap:8px;
@@ -100,14 +43,13 @@
     transition:background .15s ease;
   }
   #controls button:hover{background:rgba(34,211,199,.18);}
-  #controls button.active{background:var(--tech-dim);border-color:var(--tech);}
+  #controls button.active{background:rgba(34,211,199,.35);border-color:var(--tech);}
 
   #legend{
     position:fixed;bottom:18px;right:18px;z-index:5;
     background:var(--panel-bg);border:1px solid var(--panel-border);
     border-radius:12px;padding:10px 14px;font-size:11px;color:var(--ink-dim);
     font-family:'IBM Plex Mono',monospace;line-height:1.9;backdrop-filter:blur(10px);
-    max-width:210px;
   }
   #legend b{color:var(--tech);}
 
@@ -115,38 +57,23 @@
     position:fixed;bottom:78px;left:18px;z-index:4;font-size:10.5px;color:var(--ink-dim);
     font-family:'IBM Plex Mono',monospace;opacity:.7;
   }
-
-  ::-webkit-scrollbar{width:5px;}
-  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px;}
 </style>
 </head>
 <body>
 
 <div id="header">
-  <div class="eyebrow">SINU-166 · Trabajo Final</div>
-  <h1>AgroVerde S.A.</h1>
-  <p>Simulación 3D del campo (12 ha) con red de sensores IoT — humedad, temperatura y luz — conectados a la plataforma de monitoreo.</p>
-</div>
-
-<div id="hud">
-  <div class="hud-head"><div><span class="dot"></span><b>Red de sensores</b></div><small id="clock">t+00:00</small></div>
-  <div id="stations"></div>
-  <div id="alerts">
-    <div class="title">Alertas en tiempo real</div>
-    <ul id="alertList"><li class="empty">Sin alertas por ahora…</li></ul>
-  </div>
+  <div class="eyebrow">AgroVerde S.A.</div>
+  <h1>Campo de 12 hectáreas</h1>
+  <p>Simulación 3D de los 12 lotes de cultivo de hortalizas (lechuga, tomate y pimiento).</p>
 </div>
 
 <div id="controls">
   <button id="btnRotate">⟳ Auto-rotar</button>
-  <button id="btnPause">⏸ Pausar simulación</button>
 </div>
 
 <div id="legend">
-  <div><b>●</b> Nodo sensor IoT</div>
-  <div><b>◆</b> Gateway / Node-RED</div>
-  <div><b>▲</b> Plataforma en la nube</div>
-  <div><b>—</b> Enlace de datos (HTTP/MQTT)</div>
+  <div><b>12</b> lotes de 1 ha</div>
+  <div><b>3</b> variedades de hortalizas</div>
 </div>
 
 <div id="hint">arrastra para rotar · scroll para zoom</div>
@@ -175,16 +102,14 @@
     const g = ctx.createLinearGradient(0,0,0,256);
     g.addColorStop(0,'#bfe3f0'); g.addColorStop(0.55,'#dcefe0'); g.addColorStop(1,'#f2e4c9');
     ctx.fillStyle=g; ctx.fillRect(0,0,8,256);
-    const tex = new THREE.CanvasTexture(c);
-    scene.background = tex;
+    scene.background = new THREE.CanvasTexture(c);
   })();
   scene.fog = new THREE.Fog(0xdcefe0, 260, 620);
 
   const camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 1, 2000);
 
   // luces
-  const hemi = new THREE.HemisphereLight(0xdcefe0, 0x5b4636, 0.65);
-  scene.add(hemi);
+  scene.add(new THREE.HemisphereLight(0xdcefe0, 0x5b4636, 0.65));
   const sun = new THREE.DirectionalLight(0xfff4da, 1.05);
   sun.position.set(180, 260, 120);
   sun.castShadow = true;
@@ -194,7 +119,7 @@
   sun.shadow.camera.far = 700;
   scene.add(sun);
 
-  /* ---------- Cámara orbital manual (sin dependencias externas) ---------- */
+  /* ---------- Cámara orbital manual ---------- */
   const target = new THREE.Vector3(0,6,0);
   let radius = 340, theta = Math.PI*0.28, phi = Math.PI*0.32;
   let autoRotate = false, dragging = false, lastX=0, lastY=0;
@@ -222,7 +147,6 @@
     radius += e.deltaY*0.4;
     radius = Math.max(90, Math.min(560, radius));
   }, {passive:false});
-  // touch básico
   let touchStartDist=null;
   canvas.addEventListener('touchstart', e=>{
     if(e.touches.length===1){dragging=true;lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;}
@@ -295,12 +219,11 @@
   scene.add(ground);
 
   const cropTypes = [
-    {name:'Lechuga', color:0x5aa84c, color2:0x3f7d3a, height:2.4, shape:'sphere'},
-    {name:'Tomate',  color:0xb8482f, color2:0x6f9a4a, height:3.4, shape:'cone'},
-    {name:'Pimiento',color:0xd98a2b, color2:0x4f8b45, height:2.9, shape:'cone'}
+    {name:'Lechuga', color:0x5aa84c, height:2.4, shape:'sphere'},
+    {name:'Tomate',  color:0xb8482f, height:3.4, shape:'cone'},
+    {name:'Pimiento',color:0xd98a2b, height:2.9, shape:'cone'}
   ];
 
-  const plots = [];
   const rowLetters = ['A','B','C'];
   let plotIndex=0;
   for(let r=0;r<ROWS;r++){
@@ -308,8 +231,7 @@
       const cx = originX + c*(CELL+GAP);
       const cz = originZ + r*(CELL+GAP);
       const crop = cropTypes[plotIndex % cropTypes.length];
-      const plot = buildPlot(cx, cz, CELL, crop, `${rowLetters[r]}${c+1}`);
-      plots.push(plot);
+      buildPlot(cx, cz, CELL, crop, `${rowLetters[r]}${c+1}`);
       plotIndex++;
     }
   }
@@ -319,7 +241,7 @@
     group.position.set(cx, 0, cz);
     scene.add(group);
 
-    // suelo del lote (surcos)
+    // suelo del lote
     const soilGeo = new THREE.PlaneGeometry(size, size, 1,1);
     const soilMat = new THREE.MeshStandardMaterial({color:0x5b4636, roughness:1});
     const soil = new THREE.Mesh(soilGeo, soilMat);
@@ -328,7 +250,7 @@
     soil.position.y = 0.02;
     group.add(soil);
 
-    // surcos (líneas)
+    // surcos
     const furrowMat = new THREE.MeshStandardMaterial({color:0x4a3a2c, roughness:1});
     const rows = 9;
     for(let i=0;i<rows;i++){
@@ -370,242 +292,13 @@
     const lbl = makeLabel(`LOTE ${label} · ${crop.name}`, {scale:0.85, color:'#eef4ef'});
     lbl.position.set(0, 16, 0);
     group.add(lbl);
-
-    return {group, inst, mat, crop, label, baseColor:crop.color, size, cx, cz};
   }
-
-  /* ---------- Estaciones de sensores IoT ---------- */
-  const stationDefs = [
-    {plotLabel:'A1', name:'Nodo IoT · Sector Norte'},
-    {plotLabel:'A4', name:'Nodo IoT · Sector Este'},
-    {plotLabel:'C1', name:'Nodo IoT · Sector Oeste'},
-    {plotLabel:'C4', name:'Nodo IoT · Sector Sur'}
-  ];
-
-  const stations = [];
-  const gatewayPos = new THREE.Vector3(0, 0, 0);
-
-  stationDefs.forEach(def=>{
-    const p = plots.find(pl=>pl.label===def.plotLabel);
-    const st = buildStation(p.cx, p.cz, def.name, p);
-    stations.push(st);
-  });
-
-  function buildStation(x,z,name,plotRef){
-    const group = new THREE.Group();
-    group.position.set(x,0,z);
-    scene.add(group);
-
-    const poleMat = new THREE.MeshStandardMaterial({color:0x2b2b2b, metalness:0.4, roughness:0.5});
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,14,8), poleMat);
-    pole.position.y = 7; pole.castShadow=true;
-    group.add(pole);
-
-    const boxMat = new THREE.MeshStandardMaterial({color:0x1c2b27, metalness:0.3, roughness:0.4});
-    const box = new THREE.Mesh(new THREE.BoxGeometry(3,2,2), boxMat);
-    box.position.y = 14.2; box.castShadow=true;
-    group.add(box);
-
-    const ledMat = new THREE.MeshStandardMaterial({color:0x22d3c7, emissive:0x22d3c7, emissiveIntensity:1.4});
-    const led = new THREE.Mesh(new THREE.SphereGeometry(0.45,8,8), ledMat);
-    led.position.set(0,15.4,1.05);
-    group.add(led);
-
-    // anillo de pulso (señal)
-    const ringGeo = new THREE.RingGeometry(1.4, 1.7, 24);
-    const ringMat = new THREE.MeshBasicMaterial({color:0x22d3c7, transparent:true, opacity:0.6, side:THREE.DoubleSide});
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI/2;
-    ring.position.y = 15.4;
-    group.add(ring);
-
-    const lbl = makeLabel(name, {scale:0.7, color:'#22d3c7'});
-    lbl.position.set(0, 20, 0);
-    group.add(lbl);
-
-    return {
-      group, led, ledMat, ring, plotRef, name,
-      humedad:60, temperatura:22, luz:600,
-      alertLevel:'ok'
-    };
-  }
-
-  /* ---------- Gateway central (Node-RED) ---------- */
-  const gateway = new THREE.Group();
-  gateway.position.set(0,0,0);
-  scene.add(gateway);
-  {
-    const baseMat = new THREE.MeshStandardMaterial({color:0x2c3b33, roughness:0.6});
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(9,10,3,10), baseMat);
-    base.position.y = 1.5; base.receiveShadow=true; base.castShadow=true;
-    gateway.add(base);
-
-    const towerMat = new THREE.MeshStandardMaterial({color:0x1c2b27, metalness:0.5, roughness:0.35});
-    const tower = new THREE.Mesh(new THREE.BoxGeometry(4,10,4), towerMat);
-    tower.position.y = 8; tower.castShadow = true;
-    gateway.add(tower);
-
-    const antMat = new THREE.MeshStandardMaterial({color:0x22d3c7, emissive:0x22d3c7, emissiveIntensity:1});
-    for(let i=-1;i<=1;i+=2){
-      const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,9,6), antMat);
-      ant.position.set(i*2.2, 17.5, 0);
-      gateway.add(ant);
-    }
-    const dish = new THREE.Mesh(new THREE.SphereGeometry(1.3,10,10), new THREE.MeshStandardMaterial({color:0xeef4ef, emissive:0x22d3c7, emissiveIntensity:0.4}));
-    dish.position.y = 23;
-    gateway.add(dish);
-
-    const lbl = makeLabel('◆ GATEWAY / NODE-RED', {scale:0.9, color:'#22d3c7'});
-    lbl.position.set(0, 30, 0);
-    gateway.add(lbl);
-  }
-
-  /* ---------- Plataforma en la nube (dashboard) ---------- */
-  const cloud = new THREE.Group();
-  cloud.position.set(0, 70, 0);
-  scene.add(cloud);
-  {
-    const geo = new THREE.IcosahedronGeometry(6, 1);
-    const mat = new THREE.MeshStandardMaterial({color:0xeef4ef, emissive:0x22d3c7, emissiveIntensity:0.5, roughness:0.4, transparent:true, opacity:0.92});
-    const shape = new THREE.Mesh(geo, mat);
-    shape.castShadow = false;
-    cloud.add(shape);
-    const lbl = makeLabel('▲ PLATAFORMA / DASHBOARD', {scale:1, color:'#eef4ef'});
-    lbl.position.set(0, 9, 0);
-    cloud.add(lbl);
-  }
-
-  /* ---------- Enlaces de datos (líneas + paquetes animados) ---------- */
-  const linkMat = new THREE.LineDashedMaterial({color:0x22d3c7, dashSize:2, gapSize:1.4, transparent:true, opacity:0.55});
-  const packets = [];
-
-  stations.forEach(st=>{
-    const from = new THREE.Vector3(st.group.position.x, 15.4, st.group.position.z);
-    const to = new THREE.Vector3(0, 9, 0);
-    const points = [from, to];
-    const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const line = new THREE.Line(geo, linkMat);
-    line.computeLineDistances();
-    scene.add(line);
-
-    const packet = new THREE.Mesh(new THREE.SphereGeometry(0.7,8,8), new THREE.MeshBasicMaterial({color:0x22d3c7}));
-    scene.add(packet);
-    packets.push({mesh:packet, from, to, t:Math.random(), speed:0.006+Math.random()*0.004});
-  });
-  // gateway -> nube
-  {
-    const from = new THREE.Vector3(0,23,0), to = new THREE.Vector3(0,66,0);
-    const geo = new THREE.BufferGeometry().setFromPoints([from,to]);
-    const line = new THREE.Line(geo, linkMat);
-    line.computeLineDistances();
-    scene.add(line);
-    const packet = new THREE.Mesh(new THREE.SphereGeometry(0.9,8,8), new THREE.MeshBasicMaterial({color:0xeef4ef}));
-    scene.add(packet);
-    packets.push({mesh:packet, from, to, t:Math.random(), speed:0.005});
-  }
-
-  /* ---------- Simulación de datos ---------- */
-  const stationsEl = document.getElementById('stations');
-  const alertListEl = document.getElementById('alertList');
-  const clockEl = document.getElementById('clock');
-  let simSeconds = 0;
-  let paused = false;
-
-  function randWalk(v, min, max, step){
-    v += (Math.random()-0.5)*step;
-    return Math.max(min, Math.min(max, v));
-  }
-
-  function evalAlerts(st){
-    const alerts = [];
-    if(st.humedad < 32) alerts.push({level:'alert', text:`${st.name}: humedad ${st.humedad.toFixed(0)}% — riesgo de sequía`});
-    else if(st.humedad > 84) alerts.push({level:'warn', text:`${st.name}: humedad ${st.humedad.toFixed(0)}% — exceso de humedad`});
-    if(st.temperatura > 32) alerts.push({level:'warn', text:`${st.name}: ${st.temperatura.toFixed(0)}°C — estrés térmico`});
-    if(st.pestFlag) alerts.push({level:'alert', text:`${st.name}: patrón anómalo — posible plaga`});
-    return alerts;
-  }
-
-  function tickSimulation(){
-    if(paused) return;
-    simSeconds += 3;
-    const mm = String(Math.floor(simSeconds/60)).padStart(2,'0');
-    const ss = String(simSeconds%60).padStart(2,'0');
-    clockEl.textContent = `t+${mm}:${ss}`;
-
-    const allAlerts = [];
-    stations.forEach(st=>{
-      st.humedad = randWalk(st.humedad, 15, 95, 9);
-      st.temperatura = randWalk(st.temperatura, 14, 36, 2.2);
-      st.luz = randWalk(st.luz, 150, 1000, 90);
-      st.pestFlag = Math.random() < 0.045;
-
-      const a = evalAlerts(st);
-      st.alertLevel = a.some(x=>x.level==='alert') ? 'alert' : (a.length? 'warn':'ok');
-      allAlerts.push(...a);
-
-      // color del led según estado
-      const c = st.alertLevel==='alert' ? 0xe2543f : st.alertLevel==='warn' ? 0xf2a541 : 0x22d3c7;
-      st.ledMat.color.setHex(c); st.ledMat.emissive.setHex(c);
-
-      // teñir cultivos del lote según estrés
-      const plot = st.plotRef;
-      if(plot){
-        let target = plot.baseColor;
-        if(st.humedad < 32) target = 0xc9a24a;      // amarillento por sequía
-        else if(st.humedad > 84) target = 0x3d6a8a; // azulado por exceso de agua
-        else if(st.pestFlag) target = 0x7a5a35;      // marchito por plaga
-        plot.mat.color.lerp(new THREE.Color(target), 0.35);
-      }
-    });
-
-    renderStationsHUD();
-    renderAlerts(allAlerts);
-  }
-
-  function renderStationsHUD(){
-    stationsEl.innerHTML = '';
-    stations.forEach(st=>{
-      const row = document.createElement('div');
-      row.className = 'station-row' + (st.alertLevel==='alert'?' alert':st.alertLevel==='warn'?' warn':'');
-      row.innerHTML = `
-        <div class="name"><span>${st.name}</span><span>${st.plotRef?('LOTE '+st.plotRef.label):''}</span></div>
-        <div class="metrics">
-          <span><b>HUM</b> ${st.humedad.toFixed(0)}%</span>
-          <span><b>TEMP</b> ${st.temperatura.toFixed(0)}°C</span>
-          <span><b>LUZ</b> ${st.luz.toFixed(0)}lx</span>
-        </div>`;
-      stationsEl.appendChild(row);
-    });
-  }
-
-  function renderAlerts(list){
-    alertListEl.innerHTML = '';
-    if(!list.length){
-      alertListEl.innerHTML = '<li class="empty">Sin alertas por ahora…</li>';
-      return;
-    }
-    list.slice(0,6).forEach(a=>{
-      const li = document.createElement('li');
-      if(a.level==='warn') li.className='warn';
-      li.textContent = a.text;
-      alertListEl.appendChild(li);
-    });
-  }
-
-  tickSimulation();
-  setInterval(tickSimulation, 3000);
 
   /* ---------- Controles UI ---------- */
   const btnRotate = document.getElementById('btnRotate');
-  const btnPause = document.getElementById('btnPause');
   btnRotate.addEventListener('click', ()=>{
     autoRotate = !autoRotate;
     btnRotate.classList.toggle('active', autoRotate);
-  });
-  btnPause.addEventListener('click', ()=>{
-    paused = !paused;
-    btnPause.textContent = paused ? '▶ Reanudar simulación' : '⏸ Pausar simulación';
-    btnPause.classList.toggle('active', paused);
   });
 
   /* ---------- Loop de render ---------- */
@@ -613,23 +306,8 @@
   function animate(){
     requestAnimationFrame(animate);
     const dt = clock.getDelta();
-
     if(autoRotate && !dragging) theta += dt*0.14;
     updateCamera();
-
-    stations.forEach(st=>{
-      st.ring.scale.setScalar(1 + (Math.sin(performance.now()*0.002)*0.5+0.5)*0.9);
-      st.ring.material.opacity = 0.15 + (Math.sin(performance.now()*0.002)*0.5+0.5)*0.45;
-    });
-
-    if(!paused){
-      packets.forEach(p=>{
-        p.t += p.speed;
-        if(p.t>1) p.t=0;
-        p.mesh.position.lerpVectors(p.from, p.to, p.t);
-      });
-    }
-
     renderer.render(scene, camera);
   }
   updateCamera();
