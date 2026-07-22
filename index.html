@@ -21,17 +21,32 @@
   #c{position:fixed;top:0;left:0;width:100%;height:100%;display:block;cursor:grab;}
   #c.dragging{cursor:grabbing;}
 
-  #header{
-    position:fixed;top:18px;left:18px;z-index:5;max-width:360px;pointer-events:none;
+  #netInfo{
+    position:fixed;top:18px;left:18px;z-index:5;max-width:360px;
+    background:var(--panel-bg);border:1px solid var(--panel-border);
+    border-radius:12px;padding:14px 16px;backdrop-filter:blur(10px);
+    box-shadow:0 12px 40px rgba(0,0,0,.45);
+    display:none;
   }
-  #header .eyebrow{
+  #netInfo.show{display:block;}
+  #netInfo .eyebrow{
     font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;
     color:var(--tech);text-transform:uppercase;opacity:.9;
   }
-  #header h1{margin:4px 0 2px;font-size:22px;font-weight:700;line-height:1.15;
-    text-shadow:0 2px 12px rgba(0,0,0,.5);}
-  #header p{margin:0;font-size:12.5px;color:var(--ink-dim);line-height:1.4;
-    text-shadow:0 1px 8px rgba(0,0,0,.5);}
+  #netInfo h2{margin:4px 0 6px;font-size:17px;font-weight:700;line-height:1.2;}
+  #netInfo p{margin:0;font-size:12.5px;color:var(--ink-dim);line-height:1.45;}
+
+  #dataViz{
+    margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);
+    display:flex;gap:8px;
+  }
+  .metric-card{
+    flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+    border-radius:10px;padding:10px 8px;text-align:center;
+  }
+  .metric-card .icon{font-size:26px;line-height:1;margin-bottom:4px;transition:transform .3s ease;}
+  .metric-card .value{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--ink);}
+  .metric-card .caption{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-dim);margin-top:2px;}
 
   #controls{
     position:fixed;bottom:18px;left:18px;z-index:5;display:flex;gap:8px;
@@ -61,14 +76,30 @@
 </head>
 <body>
 
-<div id="header">
-  <div class="eyebrow">AgroVerde S.A.</div>
-  <h1>Campo de 12 hectáreas</h1>
-  <p>Simulación 3D de los 12 lotes de cultivo de hortalizas (lechuga, tomate y pimiento).</p>
+<div id="netInfo">
+  <div class="eyebrow">Arquitectura de Red</div>
+  <div id="dataViz">
+    <div class="metric-card">
+      <div class="icon" id="iconTemp">🌡️</div>
+      <div class="value" id="valTemp">--°C</div>
+      <div class="caption">Temperatura</div>
+    </div>
+    <div class="metric-card">
+      <div class="icon" id="iconLuz">☀️</div>
+      <div class="value" id="valLuz">-- lx</div>
+      <div class="caption">Luz</div>
+    </div>
+    <div class="metric-card">
+      <div class="icon">💧</div>
+      <div class="value" id="valHum">--%</div>
+      <div class="caption">Humedad</div>
+    </div>
+  </div>
 </div>
 
 <div id="controls">
   <button id="btnRotate">⟳ Auto-rotar</button>
+  <button id="btnNetwork">Arquitectura de Red</button>
 </div>
 
 <div id="legend">
@@ -92,6 +123,9 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
+  renderer.outputEncoding = THREE.sRGBEncoding;
 
   const scene = new THREE.Scene();
 
@@ -105,6 +139,42 @@
     scene.background = new THREE.CanvasTexture(c);
   })();
   scene.fog = new THREE.Fog(0xdcefe0, 260, 620);
+
+  // sol visible con resplandor
+  (function(){
+    const c = document.createElement('canvas'); c.width=128; c.height=128;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(64,64,0,64,64,64);
+    g.addColorStop(0,'rgba(255,248,220,1)');
+    g.addColorStop(0.35,'rgba(255,238,180,0.85)');
+    g.addColorStop(1,'rgba(255,238,180,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,128,128);
+    const tex = new THREE.CanvasTexture(c);
+    const mat = new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false});
+    const sun = new THREE.Sprite(mat);
+    sun.scale.set(160,160,1);
+    sun.position.set(180,260,120);
+    scene.add(sun);
+  })();
+
+  // nubes simples flotando
+  const clouds = [];
+  (function(){
+    const cloudMat = new THREE.MeshStandardMaterial({color:0xffffff, transparent:true, opacity:0.85, roughness:1});
+    for(let i=0;i<6;i++){
+      const cloud = new THREE.Group();
+      const puffs = 3 + Math.floor(Math.random()*3);
+      for(let j=0;j<puffs;j++){
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(6+Math.random()*5, 8, 6), cloudMat);
+        puff.position.set(j*7 - puffs*3.5, Math.random()*2, Math.random()*4);
+        cloud.add(puff);
+      }
+      cloud.position.set((Math.random()-0.5)*500, 130+Math.random()*40, (Math.random()-0.5)*400);
+      cloud.userData.speed = 1.5 + Math.random()*1.5;
+      scene.add(cloud);
+      clouds.push(cloud);
+    }
+  })();
 
   const camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 1, 2000);
 
@@ -211,12 +281,42 @@
   const originZ = -fieldD/2 + (CELL+GAP)/2;
 
   const groundGeo = new THREE.PlaneGeometry(fieldW+140, fieldD+140, 1,1);
-  const groundMat = new THREE.MeshStandardMaterial({color:0x86a56b, roughness:1});
+  const grassTex = (function(){
+    const c = document.createElement('canvas'); c.width=256; c.height=256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#7fa15f'; ctx.fillRect(0,0,256,256);
+    for(let i=0;i<3200;i++){
+      const x = Math.random()*256, y = Math.random()*256;
+      const shade = Math.random();
+      ctx.fillStyle = shade>0.66 ? 'rgba(150,185,110,0.5)' : shade>0.33 ? 'rgba(95,135,70,0.5)' : 'rgba(65,100,50,0.4)';
+      ctx.fillRect(x, y, 2+Math.random()*2, 2+Math.random()*2);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(14,11);
+    return tex;
+  })();
+  const groundMat = new THREE.MeshStandardMaterial({map:grassTex, roughness:1});
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI/2;
   ground.receiveShadow = true;
   ground.position.y = -0.05;
   scene.add(ground);
+
+  // caminos de tierra entre los lotes (grilla)
+  const pathMat = new THREE.MeshStandardMaterial({color:0x8a7355, roughness:1});
+  for(let c=0;c<=COLS;c++){
+    const x = originX - (CELL+GAP)/2 + c*(CELL+GAP);
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(GAP+2, fieldD+8), pathMat);
+    p.rotation.x = -Math.PI/2; p.position.set(x, 0.01, 0); p.receiveShadow = true;
+    scene.add(p);
+  }
+  for(let r=0;r<=ROWS;r++){
+    const z = originZ - (CELL+GAP)/2 + r*(CELL+GAP);
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(fieldW+8, GAP+2), pathMat);
+    p.rotation.x = -Math.PI/2; p.position.set(0, 0.01, z); p.receiveShadow = true;
+    scene.add(p);
+  }
 
   const cropTypes = [
     {name:'Lechuga', color:0x5aa84c, height:2.4, shape:'sphere'},
@@ -294,12 +394,228 @@
     group.add(lbl);
   }
 
+  /* ---------- Cerca perimetral ---------- */
+  (function(){
+    const postMat = new THREE.MeshStandardMaterial({color:0x6b4a30, roughness:1});
+    const wireMat = new THREE.MeshStandardMaterial({color:0x3a2c1e, roughness:0.8});
+    const halfW = fieldW/2 + 10, halfD = fieldD/2 + 10;
+    const perimeter = [];
+    const spacing = 20;
+    for(let x=-halfW; x<=halfW; x+=spacing) perimeter.push([x,-halfD]);
+    for(let x=-halfW; x<=halfW; x+=spacing) perimeter.push([x, halfD]);
+    for(let z=-halfD+spacing; z<halfD; z+=spacing) perimeter.push([-halfW, z]);
+    for(let z=-halfD+spacing; z<halfD; z+=spacing) perimeter.push([ halfW, z]);
+    perimeter.forEach(([x,z])=>{
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.65,5.5,6), postMat);
+      post.position.set(x, 2.75, z); post.castShadow = true;
+      scene.add(post);
+    });
+    // travesaños a lo largo de cada lado
+    const rails = [
+      {len:halfW*2, pos:[0,3.6,-halfD], rot:0},
+      {len:halfW*2, pos:[0,3.6, halfD], rot:0},
+      {len:halfD*2, pos:[-halfW,3.6,0], rot:Math.PI/2},
+      {len:halfD*2, pos:[ halfW,3.6,0], rot:Math.PI/2},
+    ];
+    rails.forEach(rDef=>{
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(rDef.len, 0.5, 0.5), wireMat);
+      rail.position.set(...rDef.pos);
+      rail.rotation.y = rDef.rot;
+      rail.castShadow = true;
+      scene.add(rail);
+    });
+  })();
+
+  /* ---------- Árboles dispersos fuera de la cerca ---------- */
+  (function(){
+    const trunkMat = new THREE.MeshStandardMaterial({color:0x5c4326, roughness:1});
+    const leafMats = [
+      new THREE.MeshStandardMaterial({color:0x3f7d3a, roughness:0.9}),
+      new THREE.MeshStandardMaterial({color:0x4f8f45, roughness:0.9}),
+      new THREE.MeshStandardMaterial({color:0x356b32, roughness:0.9})
+    ];
+    const halfW = fieldW/2 + 26, halfD = fieldD/2 + 26;
+    for(let i=0;i<26;i++){
+      const angle = Math.random()*Math.PI*2;
+      const ringPick = Math.random();
+      let x,z;
+      if(ringPick<0.5){ x=(Math.random()-0.5)*(fieldW+80); z = Math.random()<0.5 ? -halfD-Math.random()*20 : halfD+Math.random()*20; }
+      else { z=(Math.random()-0.5)*(fieldD+80); x = Math.random()<0.5 ? -halfW-Math.random()*20 : halfW+Math.random()*20; }
+
+      const tree = new THREE.Group();
+      const trunkH = 6+Math.random()*3;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.9,trunkH,6), trunkMat);
+      trunk.position.y = trunkH/2; trunk.castShadow = true;
+      tree.add(trunk);
+      const leafMat = leafMats[Math.floor(Math.random()*leafMats.length)];
+      for(let k=0;k<3;k++){
+        const leaf = new THREE.Mesh(new THREE.SphereGeometry(4.2-k*0.8, 8, 6), leafMat);
+        leaf.position.y = trunkH + k*3.4;
+        leaf.castShadow = true;
+        tree.add(leaf);
+      }
+      tree.position.set(x, 0, z);
+      tree.scale.setScalar(0.8+Math.random()*0.6);
+      scene.add(tree);
+    }
+  })();
+
+  /* ---------- Silo de almacenamiento ---------- */
+  (function(){
+    const silo = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({color:0xd8d4c8, metalness:0.3, roughness:0.55});
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(7,7,26,16), bodyMat);
+    body.position.y = 13; body.castShadow = true; body.receiveShadow = true;
+    silo.add(body);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(7.6,7,16), new THREE.MeshStandardMaterial({color:0x8a3b2e, roughness:0.6}));
+    roof.position.y = 26+3.5; roof.castShadow = true;
+    silo.add(roof);
+    const bandMat = new THREE.MeshStandardMaterial({color:0xb0ab9c, metalness:0.4, roughness:0.5});
+    for(let i=0;i<4;i++){
+      const band = new THREE.Mesh(new THREE.TorusGeometry(7.05, 0.18, 6, 24), bandMat);
+      band.rotation.x = Math.PI/2;
+      band.position.y = 4 + i*6;
+      silo.add(band);
+    }
+    silo.position.set(-fieldW/2 - 34, 0, -fieldD/2 - 8);
+    scene.add(silo);
+  })();
+  const networkGroup = new THREE.Group();
+  networkGroup.visible = false;
+  scene.add(networkGroup);
+
+  const sensorDefs = [
+    {label:'Humedad',     x:originX + 0*(CELL+GAP),  z:originZ + 0*(CELL+GAP)},
+    {label:'Temperatura', x:originX + 3*(CELL+GAP),  z:originZ + 0*(CELL+GAP)},
+    {label:'Luz',         x:originX + 1.5*(CELL+GAP),z:originZ + 2*(CELL+GAP)}
+  ];
+
+  const poleMat = new THREE.MeshStandardMaterial({color:0x2b2b2b, metalness:0.4, roughness:0.5});
+  const boxMat = new THREE.MeshStandardMaterial({color:0x1c2b27, metalness:0.3, roughness:0.4});
+  const ledMat = new THREE.MeshStandardMaterial({color:0x22d3c7, emissive:0x22d3c7, emissiveIntensity:1.4});
+  const linkMat = new THREE.LineDashedMaterial({color:0x22d3c7, dashSize:2, gapSize:1.4, transparent:true, opacity:0.6});
+
+  const sensorNodes = [];
+  sensorDefs.forEach(def=>{
+    const g = new THREE.Group();
+    g.position.set(def.x, 0, def.z);
+    networkGroup.add(g);
+
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,14,8), poleMat);
+    pole.position.y = 7; pole.castShadow = true;
+    g.add(pole);
+
+    const box = new THREE.Mesh(new THREE.BoxGeometry(3,2,2), boxMat);
+    box.position.y = 14.2; box.castShadow = true;
+    g.add(box);
+
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.45,8,8), ledMat);
+    led.position.set(0,15.4,1.05);
+    g.add(led);
+
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(1.4, 1.7, 24),
+      new THREE.MeshBasicMaterial({color:0x22d3c7, transparent:true, opacity:0.6, side:THREE.DoubleSide})
+    );
+    ring.rotation.x = -Math.PI/2;
+    ring.position.y = 15.4;
+    g.add(ring);
+
+    const lbl = makeLabel(`SENSOR · ${def.label}`, {scale:0.7, color:'#22d3c7'});
+    lbl.position.set(0, 20, 0);
+    g.add(lbl);
+
+    sensorNodes.push({group:g, ring, top:new THREE.Vector3(def.x, 15.4, def.z)});
+  });
+
+  // plataforma de visualización de datos
+  const platform = new THREE.Group();
+  platform.position.set(0, 0, 0);
+  networkGroup.add(platform);
+  {
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(9,10,3,10),
+      new THREE.MeshStandardMaterial({color:0x2c3b33, roughness:0.6})
+    );
+    base.position.y = 1.5; base.receiveShadow = true; base.castShadow = true;
+    platform.add(base);
+
+    const shape = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(6, 1),
+      new THREE.MeshStandardMaterial({color:0xeef4ef, emissive:0x22d3c7, emissiveIntensity:0.5, roughness:0.4, transparent:true, opacity:0.92})
+    );
+    shape.position.y = 22;
+    platform.add(shape);
+
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,16,8), poleMat);
+    stem.position.y = 11;
+    platform.add(stem);
+
+    const lbl = makeLabel('◆ PLATAFORMA DE VISUALIZACIÓN', {scale:0.9, color:'#eef4ef'});
+    lbl.position.set(0, 30, 0);
+    platform.add(lbl);
+  }
+  const platformTop = new THREE.Vector3(0, 22, 0);
+
+  // enlaces de datos + paquetes animados (sensor -> plataforma)
+  const packets = [];
+  sensorNodes.forEach(node=>{
+    const points = [node.top, platformTop];
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geo, linkMat);
+    line.computeLineDistances();
+    networkGroup.add(line);
+
+    const packet = new THREE.Mesh(new THREE.SphereGeometry(0.7,8,8), new THREE.MeshBasicMaterial({color:0x22d3c7}));
+    networkGroup.add(packet);
+    packets.push({mesh:packet, from:node.top, to:platformTop, t:Math.random(), speed:0.006+Math.random()*0.004});
+  });
+
   /* ---------- Controles UI ---------- */
   const btnRotate = document.getElementById('btnRotate');
   btnRotate.addEventListener('click', ()=>{
     autoRotate = !autoRotate;
     btnRotate.classList.toggle('active', autoRotate);
   });
+
+  const btnNetwork = document.getElementById('btnNetwork');
+  const netInfo = document.getElementById('netInfo');
+  btnNetwork.addEventListener('click', ()=>{
+    networkGroup.visible = !networkGroup.visible;
+    btnNetwork.classList.toggle('active', networkGroup.visible);
+    netInfo.classList.toggle('show', networkGroup.visible);
+  });
+
+  /* ---------- Plataforma de visualización de datos: iconos en vivo ---------- */
+  const valTemp = document.getElementById('valTemp');
+  const valLuz = document.getElementById('valLuz');
+  const valHum = document.getElementById('valHum');
+  const iconTemp = document.getElementById('iconTemp');
+  const iconLuz = document.getElementById('iconLuz');
+
+  let simTemp = 24, simLuz = 650, simHum = 55;
+  function randWalk(v, min, max, step){
+    v += (Math.random()-0.5)*step;
+    return Math.max(min, Math.min(max, v));
+  }
+  function updateDataViz(){
+    simTemp = randWalk(simTemp, 14, 36, 2.2);
+    simLuz  = randWalk(simLuz, 80, 1000, 90);
+    simHum  = randWalk(simHum, 15, 95, 8);
+
+    valTemp.textContent = `${simTemp.toFixed(0)}°C`;
+    valHum.textContent  = `${simHum.toFixed(0)}%`;
+    valLuz.textContent  = `${simLuz.toFixed(0)} lx`;
+
+    // el termómetro cambia de color según la temperatura
+    iconTemp.style.filter = simTemp > 30 ? 'hue-rotate(-20deg) saturate(1.4)' : simTemp < 18 ? 'hue-rotate(140deg)' : 'none';
+
+    // sol de día (mucha luz) / luna de noche (poca luz)
+    iconLuz.textContent = simLuz > 350 ? '☀️' : '🌙';
+    iconLuz.style.transform = simLuz > 350 ? 'rotate(0deg)' : 'rotate(-10deg)';
+  }
+  updateDataViz();
+  setInterval(updateDataViz, 2200);
 
   /* ---------- Loop de render ---------- */
   const clock = new THREE.Clock();
@@ -308,6 +624,25 @@
     const dt = clock.getDelta();
     if(autoRotate && !dragging) theta += dt*0.14;
     updateCamera();
+
+    clouds.forEach(cl=>{
+      cl.position.x += dt*cl.userData.speed;
+      if(cl.position.x > 320) cl.position.x = -320;
+    });
+
+    if(networkGroup.visible){
+      sensorNodes.forEach(node=>{
+        const pulse = Math.sin(performance.now()*0.002)*0.5+0.5;
+        node.ring.scale.setScalar(1 + pulse*0.9);
+        node.ring.material.opacity = 0.15 + pulse*0.45;
+      });
+      packets.forEach(p=>{
+        p.t += p.speed;
+        if(p.t>1) p.t=0;
+        p.mesh.position.lerpVectors(p.from, p.to, p.t);
+      });
+    }
+
     renderer.render(scene, camera);
   }
   updateCamera();
