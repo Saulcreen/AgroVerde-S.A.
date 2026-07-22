@@ -510,9 +510,32 @@
     return mergeGeometries(parts);
   }
   function buildTomatoFruitGeometry(){
+    // frutos redondos y carnosos como un tomate real, con una copita verde (cáliz) en la parte superior
     const parts = [];
-    const spots = [[0.46,0.9,0.16],[-0.34,1.25,0.42],[0.24,1.65,-0.4],[-0.42,2.0,0.1],[0.1,1.05,-0.46],[0.38,1.9,0.3]];
-    spots.forEach(p=> parts.push(transformGeo(new THREE.SphereGeometry(0.24,10,8), {pos:p})));
+    const spots = [[0.5,0.85,0.18],[-0.36,1.2,0.44],[0.26,1.62,-0.42],[-0.44,1.98,0.12],[0.12,1.05,-0.48],[0.4,1.88,0.32]];
+    spots.forEach(p=>{
+      // cuerpo del tomate: esfera ligeramente achatada, muy redonda
+      parts.push(transformGeo(new THREE.SphereGeometry(0.42,14,12), {pos:p, scale:[1,0.92,1]}));
+      // leve hendidura inferior típica del tomate
+      parts.push(transformGeo(new THREE.SphereGeometry(0.1,8,6), {pos:[p[0],p[1]-0.38,p[2]], scale:[1,0.6,1]}));
+    });
+    return mergeGeometries(parts);
+  }
+  function buildTomatoCalyxGeometry(){
+    // cáliz verde en forma de estrella sobre cada tomate
+    const spots = [[0.5,0.85,0.18],[-0.36,1.2,0.44],[0.26,1.62,-0.42],[-0.44,1.98,0.12],[0.12,1.05,-0.48],[0.4,1.88,0.32]];
+    const parts = [];
+    spots.forEach(p=>{
+      parts.push(transformGeo(new THREE.SphereGeometry(0.09,6,5), {pos:[p[0],p[1]+0.38,p[2]]}));
+      const points = 5;
+      for(let k=0;k<points;k++){
+        const a = (k/points)*Math.PI*2;
+        parts.push(transformGeo(new THREE.ConeGeometry(0.05,0.22,4), {
+          pos:[p[0]+Math.cos(a)*0.1, p[1]+0.42, p[2]+Math.sin(a)*0.1],
+          rot:[1.05, a, 0]
+        }));
+      }
+    });
     return mergeGeometries(parts);
   }
   function buildPepperFoliageGeometry(){
@@ -576,9 +599,9 @@
   }
 
   const cropTypes = [
-    {name:'Lechuga',  foliageColor:0x74b43c, foliageGeo:buildLettuceGeometry(),      fruitGeo:null,                     fruitColor:null},
-    {name:'Tomate',   foliageColor:0x2f7d3a, foliageGeo:buildTomatoFoliageGeometry(),fruitGeo:buildTomatoFruitGeometry(),fruitColor:0xe23324},
-    {name:'Pimiento', foliageColor:0x3d7a24, foliageGeo:buildPepperFoliageGeometry(),fruitGeo:buildPepperFruitGeometry(),fruitColor:0xf4c430}
+    {name:'Lechuga',  foliageColor:0x74b43c, foliageGeo:buildLettuceGeometry(),      fruitGeo:null,                     fruitColor:null,   calyxGeo:null},
+    {name:'Tomate',   foliageColor:0x2f7d3a, foliageGeo:buildTomatoFoliageGeometry(),fruitGeo:buildTomatoFruitGeometry(),fruitColor:0xd81f1f, calyxGeo:buildTomatoCalyxGeometry()},
+    {name:'Pimiento', foliageColor:0x3d7a24, foliageGeo:buildPepperFoliageGeometry(),fruitGeo:buildPepperFruitGeometry(),fruitColor:0xf4c430, calyxGeo:null}
   ];
 
   const rowLetters = ['A','B','C'];
@@ -630,7 +653,8 @@
       for(let j=0;j<perRow;j++){
         const x = -size/2 + 8 + j*((size-16)/(perRow-1)) + (Math.random()-0.5)*2.4;
         dummy.position.set(x, 0, z + (Math.random()-0.5)*1.2);
-        const s = 0.85 + Math.random()*0.45;
+        // cultivos más grandes y frondosos
+        const s = 1.35 + Math.random()*0.6;
         dummy.scale.set(s, s*(0.9+Math.random()*0.25), s);
         dummy.rotation.y = Math.random()*Math.PI*2;
         dummy.updateMatrix();
@@ -646,11 +670,25 @@
     group.add(foliageInst);
 
     if(crop.fruitGeo){
-      const fruitMat = new THREE.MeshStandardMaterial({color:crop.fruitColor, roughness:0.32});
+      // material del fruto: rojo brillante y liso, como un tomate maduro real
+      const fruitMat = new THREE.MeshStandardMaterial({
+        color:crop.fruitColor,
+        roughness:0.14,
+        metalness:0.02,
+        envMapIntensity:1.2
+      });
       const fruitInst = new THREE.InstancedMesh(crop.fruitGeo, fruitMat, count);
       fruitInst.castShadow = true;
       matrices.forEach((m,i)=> fruitInst.setMatrixAt(i, m));
       group.add(fruitInst);
+
+      if(crop.calyxGeo){
+        const calyxMat = new THREE.MeshStandardMaterial({color:0x3e7a2e, roughness:0.7});
+        const calyxInst = new THREE.InstancedMesh(crop.calyxGeo, calyxMat, count);
+        calyxInst.castShadow = true;
+        matrices.forEach((m,i)=> calyxInst.setMatrixAt(i, m));
+        group.add(calyxInst);
+      }
     }
 
     // etiqueta del lote
