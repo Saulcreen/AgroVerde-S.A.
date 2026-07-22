@@ -190,6 +190,114 @@
   }
   #legend b{color:var(--tech);}
 
+  /* ---------- Informe Visual: dashboard tipo hoja de cálculo ---------- */
+  #reportPanel{
+    position:fixed;inset:0;z-index:55;display:none;
+    align-items:center;justify-content:center;padding:clamp(14px,3vw,36px);
+  }
+  #reportPanel.show{display:flex;}
+  #reportPanel::before{
+    content:'';position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse at 15% 10%, rgba(255,255,255,.05), transparent 55%),
+      radial-gradient(ellipse at 85% 90%, rgba(34,211,199,.06), transparent 55%),
+      #123430;
+  }
+  .repBoard{
+    position:relative;width:min(1240px,96vw);height:min(800px,94vh);
+    background:radial-gradient(circle at 18% 12%, rgba(255,255,255,.045), transparent 50%), #1b423b;
+    border:1px solid rgba(34,211,199,.22);border-radius:20px;
+    box-shadow:0 40px 100px rgba(0,0,0,.55), inset 0 0 70px rgba(0,0,0,.35);
+    padding:22px clamp(16px,3vw,32px) 20px;
+    display:flex;flex-direction:column;overflow:hidden;
+    animation:monIn .32s cubic-bezier(.2,.8,.2,1);
+  }
+  .repCloseBtn{
+    position:absolute;top:16px;right:16px;z-index:3;
+    width:36px;height:36px;border-radius:50%;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);
+    color:var(--ink);font-size:15px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s ease,border-color .15s ease,transform .15s ease;
+  }
+  .repCloseBtn:hover{background:rgba(226,84,63,.32);border-color:var(--red);transform:rotate(90deg);}
+  .repHeader{position:relative;z-index:1;display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;padding-right:40px;}
+  .repHeader h1{
+    flex:1;margin:0;font-family:'Playfair Display',serif;font-weight:700;
+    font-size:clamp(18px,2.4vw,26px);color:var(--ink);
+  }
+  .repHeader .repMeta{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-dim);
+    display:flex;align-items:center;gap:8px;white-space:nowrap;
+  }
+  .repHeader .repMeta .dot{
+    display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--tech);box-shadow:0 0 8px var(--tech);animation:pulse 1.6s ease-in-out infinite;
+  }
+  .repSummary{
+    position:relative;z-index:1;display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;
+  }
+  .repSummary .repCard{
+    flex:1;min-width:120px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);
+    border-radius:12px;padding:10px 14px;
+  }
+  .repSummary .repCard .n{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--tech);}
+  .repSummary .repCard.alertCard .n{color:var(--red);}
+  .repSummary .repCard.warnCard .n{color:var(--amber);}
+  .repSummary .repCard .l{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-dim);margin-top:2px;}
+
+  .repBody{position:relative;z-index:1;flex:1;min-height:0;display:grid;grid-template-columns:1.5fr 1fr;gap:16px;}
+  @media (max-width:820px){.repBody{grid-template-columns:1fr;}}
+
+  .repSheet{
+    min-height:0;background:rgba(255,255,255,.97);border-radius:12px;overflow:hidden;
+    display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.3);
+  }
+  .repSheetTitle{
+    flex:0 0 auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:1.5px;
+    text-transform:uppercase;color:#3a5148;background:#e7efe9;padding:9px 14px;border-bottom:1px solid #d7e2db;
+  }
+  .repSheetWrap{flex:1;min-height:0;overflow-y:auto;}
+  table#repTable{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#1d2b25;}
+  table#repTable thead th{
+    position:sticky;top:0;background:#dcebe4;color:#254038;text-align:left;
+    padding:7px 10px;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid #c4d6cc;
+  }
+  table#repTable tbody td{padding:6px 10px;border-bottom:1px solid #eef3f0;}
+  table#repTable tbody tr:nth-child(even){background:#f5f9f6;}
+  table#repTable tbody tr.rowAlert{background:rgba(226,84,63,.12);}
+  table#repTable tbody tr.rowWarn{background:rgba(242,165,65,.14);}
+  .repTag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;letter-spacing:.3px;}
+  .repTag.ok{background:rgba(34,197,94,.16);color:#1a7a44;}
+  .repTag.warn{background:rgba(242,165,65,.22);color:#8a5a10;}
+  .repTag.alert{background:rgba(226,84,63,.2);color:#a3301f;}
+
+  .repRight{min-height:0;display:flex;flex-direction:column;gap:14px;}
+  .repChartCard{
+    background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:12px;
+    padding:12px 14px;display:flex;flex-direction:column;min-height:0;
+  }
+  .repChartCard .mon-title{margin-bottom:8px;}
+  .repBars{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;
+    scrollbar-width:none;-ms-overflow-style:none;}
+  .repBars::-webkit-scrollbar{display:none;width:0;height:0;}
+  .repBarRow{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-dim);}
+  .repBarRow .repBarLabel{width:44px;flex:0 0 auto;}
+  .repBarRow .repBarTrack{flex:1;height:8px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;}
+  .repBarRow .repBarFill{height:100%;border-radius:999px;background:var(--tech);transition:width .4s ease;}
+  .repBarRow .repBarVal{width:44px;flex:0 0 auto;text-align:right;color:var(--ink);}
+
+  .repAlertsCard{flex:1;min-height:0;display:flex;flex-direction:column;}
+  #repAlertList{list-style:none;margin:0;padding:0;flex:1;min-height:0;overflow-y:auto;
+    scrollbar-width:none;-ms-overflow-style:none;}
+  #repAlertList::-webkit-scrollbar{display:none;width:0;height:0;}
+  #repAlertList li{
+    font-size:12px;padding:7px 9px;margin-bottom:6px;border-radius:9px;
+    background:rgba(226,84,63,.14);border:1px solid rgba(226,84,63,.32);color:#ffd9d0;line-height:1.4;
+  }
+  #repAlertList li.warn{background:rgba(242,165,65,.14);border-color:rgba(242,165,65,.32);color:#ffe6bd;}
+  #repAlertList .rep-empty{color:var(--ink-dim);background:none;border:none;padding-left:0;}
+
   /* ---------- Botón y panel de chat educativo con IA ---------- */
   #btnIA{
     position:fixed;top:18px;left:390px;z-index:6;
@@ -321,13 +429,53 @@
   </div>
 </div>
 
+<div id="reportPanel">
+  <div class="repBoard">
+    <button id="repClose" class="repCloseBtn" aria-label="Cerrar informe" title="Cerrar">✕</button>
+    <div class="repHeader">
+      <h1>📊 Informe Visual — Campo AgroVerde</h1>
+      <span class="repMeta"><span class="dot"></span>Actualización automática cada 10 min · última: <b id="repLastUpdate">--:--:--</b> · próxima en <b id="repCountdown">10:00</b></span>
+    </div>
+    <div class="repSummary">
+      <div class="repCard"><div class="n" id="repAvgHum">--%</div><div class="l">Humedad promedio</div></div>
+      <div class="repCard"><div class="n" id="repAvgTemp">--°C</div><div class="l">Temperatura promedio</div></div>
+      <div class="repCard"><div class="n" id="repAvgLuz">--lx</div><div class="l">Luz promedio</div></div>
+      <div class="repCard warnCard"><div class="n" id="repWarnCount">0</div><div class="l">Advertencias</div></div>
+      <div class="repCard alertCard"><div class="n" id="repAlertCount">0</div><div class="l">Alertas críticas</div></div>
+    </div>
+    <div class="repBody">
+      <div class="repSheet">
+        <div class="repSheetTitle">Hoja de datos · 12 lotes</div>
+        <div class="repSheetWrap">
+          <table id="repTable">
+            <thead>
+              <tr><th>Lote</th><th>Humedad</th><th>Temp.</th><th>Luz</th><th>Estado</th></tr>
+            </thead>
+            <tbody id="repTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="repRight">
+        <div class="repChartCard" style="flex:1;">
+          <div class="mon-title">Humedad por lote</div>
+          <div class="repBars" id="repBars"></div>
+        </div>
+        <div class="repChartCard repAlertsCard" style="flex:1;">
+          <div class="mon-title">Alertas generadas</div>
+          <ul id="repAlertList"><li class="rep-empty">Sin riesgos detectados…</li></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="controls">
   <button id="btnRotate">⟳ Auto-rotar</button>
   <button id="btnNetwork">Arquitectura de Red</button>
   <button id="btnMonitor">Sistema de Monitoreo</button>
+  <button id="btnReport">📊 Informe Visual</button>
   <button id="btnNight">🌙 Modo Noche</button>
   <button id="btnDispenser">💧 Riego: Automático</button>
-  <button id="btnReport">📊 Informe Visual</button>
 </div>
 
 <div id="legend">
@@ -1306,6 +1454,110 @@
   }
   monitorTick();
   setInterval(monitorTick, 3000);
+
+  /* ---------- Informe Visual: dashboard tipo hoja de cálculo (actualiza cada 10 min) ---------- */
+  const btnReport = document.getElementById('btnReport');
+  const reportPanel = document.getElementById('reportPanel');
+  const repCloseBtn = document.getElementById('repClose');
+  const repTableBody = document.getElementById('repTableBody');
+  const repBarsEl = document.getElementById('repBars');
+  const repAlertListEl = document.getElementById('repAlertList');
+  const repLastUpdateEl = document.getElementById('repLastUpdate');
+  const repCountdownEl = document.getElementById('repCountdown');
+  const repAvgHumEl = document.getElementById('repAvgHum');
+  const repAvgTempEl = document.getElementById('repAvgTemp');
+  const repAvgLuzEl = document.getElementById('repAvgLuz');
+  const repWarnCountEl = document.getElementById('repWarnCount');
+  const repAlertCountEl = document.getElementById('repAlertCount');
+
+  const REPORT_REFRESH_MS = 10 * 60 * 1000; // 10 minutos
+  let repNextRefreshAt = Date.now() + REPORT_REFRESH_MS;
+
+  function statusTag(status){
+    if(status==='alert') return '<span class="repTag alert">Alerta</span>';
+    if(status==='warn')  return '<span class="repTag warn">Advertencia</span>';
+    return '<span class="repTag ok">Normal</span>';
+  }
+
+  function updateReport(){
+    // "Hoja de cálculo": una fila por lote con los datos recolectados
+    repTableBody.innerHTML = '';
+    repBarsEl.innerHTML = '';
+    let sumHum=0, sumTemp=0, sumLuz=0, warnCount=0, alertCount=0;
+    const allAlerts = [];
+
+    monNodes.forEach(node=>{
+      sumHum += node.humedad; sumTemp += node.temperatura; sumLuz += node.luz;
+      if(node.status==='warn') warnCount++;
+      if(node.status==='alert') alertCount++;
+      allAlerts.push(...evalPlotAlerts(node));
+
+      const tr = document.createElement('tr');
+      tr.className = node.status==='alert' ? 'rowAlert' : node.status==='warn' ? 'rowWarn' : '';
+      tr.innerHTML = `
+        <td><b>${node.plot.label}</b></td>
+        <td>${node.humedad.toFixed(0)}%</td>
+        <td>${node.temperatura.toFixed(0)}°C</td>
+        <td>${node.luz.toFixed(0)} lx</td>
+        <td>${statusTag(node.status)}</td>`;
+      repTableBody.appendChild(tr);
+
+      const barRow = document.createElement('div');
+      barRow.className = 'repBarRow';
+      const pct = Math.max(0, Math.min(100, node.humedad));
+      const barColor = node.humedad < 32 ? '#e2543f' : node.humedad > 85 ? '#3d9ae8' : '#22d3c7';
+      barRow.innerHTML = `
+        <span class="repBarLabel">${node.plot.label}</span>
+        <span class="repBarTrack"><span class="repBarFill" style="width:${pct}%;background:${barColor};"></span></span>
+        <span class="repBarVal">${node.humedad.toFixed(0)}%</span>`;
+      repBarsEl.appendChild(barRow);
+    });
+
+    const n = monNodes.length || 1;
+    repAvgHumEl.textContent = (sumHum/n).toFixed(0) + '%';
+    repAvgTempEl.textContent = (sumTemp/n).toFixed(0) + '°C';
+    repAvgLuzEl.textContent = (sumLuz/n).toFixed(0) + ' lx';
+    repWarnCountEl.textContent = warnCount;
+    repAlertCountEl.textContent = alertCount;
+
+    repAlertListEl.innerHTML = '';
+    if(!allAlerts.length){
+      repAlertListEl.innerHTML = '<li class="rep-empty">Sin riesgos detectados…</li>';
+    } else {
+      allAlerts.forEach(a=>{
+        const li = document.createElement('li');
+        if(a.level==='warn') li.className='warn';
+        li.textContent = a.text;
+        repAlertListEl.appendChild(li);
+      });
+    }
+
+    const now = new Date();
+    repLastUpdateEl.textContent = now.toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    repNextRefreshAt = Date.now() + REPORT_REFRESH_MS;
+  }
+
+  function tickRepCountdown(){
+    const msLeft = Math.max(0, repNextRefreshAt - Date.now());
+    const totalSec = Math.floor(msLeft/1000);
+    const mm = String(Math.floor(totalSec/60)).padStart(2,'0');
+    const ss = String(totalSec%60).padStart(2,'0');
+    repCountdownEl.textContent = `${mm}:${ss}`;
+  }
+
+  updateReport();
+  setInterval(updateReport, REPORT_REFRESH_MS); // se actualiza automáticamente cada 10 minutos
+  setInterval(tickRepCountdown, 1000);
+
+  function setReportOpen(open){
+    btnReport.classList.toggle('active', open);
+    reportPanel.classList.toggle('show', open);
+    if(open) updateReport(); // refresca al abrir para mostrar el dato más reciente
+  }
+  btnReport.addEventListener('click', ()=> setReportOpen(!reportPanel.classList.contains('show')));
+  repCloseBtn.addEventListener('click', ()=> setReportOpen(false));
+  reportPanel.addEventListener('click', e=>{ if(e.target===reportPanel) setReportOpen(false); });
+  window.addEventListener('keydown', e=>{ if(e.key==='Escape' && reportPanel.classList.contains('show')) setReportOpen(false); });
 
   /* ---------- Chat educativo con IA ---------- */
   // ⚠️ IMPORTANTE: esta es la URL de tu proyecto en Vercel (mismo dominio que sirve este HTML + /api/chat)
