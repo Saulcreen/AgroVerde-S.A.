@@ -247,6 +247,7 @@
   <button id="btnRotate">⟳ Auto-rotar</button>
   <button id="btnNetwork">Arquitectura de Red</button>
   <button id="btnMonitor">Sistema de Monitoreo</button>
+  <button id="btnNight">🌙 Modo Noche</button>
 </div>
 
 <div id="legend">
@@ -271,23 +272,20 @@
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.08;
+  renderer.toneMappingExposure = 0.96;
   renderer.outputEncoding = THREE.sRGBEncoding;
 
   const scene = new THREE.Scene();
 
-  // cielo degradado
-  (function(){
-    const c = document.createElement('canvas'); c.width=8; c.height=256;
-    const ctx = c.getContext('2d');
-    const g = ctx.createLinearGradient(0,0,0,256);
-    g.addColorStop(0,'#bfe3f0'); g.addColorStop(0.55,'#dcefe0'); g.addColorStop(1,'#f2e4c9');
-    ctx.fillStyle=g; ctx.fillRect(0,0,8,256);
-    scene.background = new THREE.CanvasTexture(c);
-  })();
-  scene.fog = new THREE.Fog(0xdcefe0, 260, 620);
+  // cielo celeste sólido (y su versión nocturna)
+  const DAY_SKY = 0x87ceeb, NIGHT_SKY = 0x0a1830;
+  const DAY_FOG = {color:0xcfe8d6, near:380, far:860};
+  const NIGHT_FOG = {color:0x0a1830, near:260, far:680};
+  scene.background = new THREE.Color(DAY_SKY);
+  scene.fog = new THREE.Fog(DAY_FOG.color, DAY_FOG.near, DAY_FOG.far);
 
   // sol visible con resplandor
+  let sunSprite;
   (function(){
     const c = document.createElement('canvas'); c.width=128; c.height=128;
     const ctx = c.getContext('2d');
@@ -298,10 +296,50 @@
     ctx.fillStyle=g; ctx.fillRect(0,0,128,128);
     const tex = new THREE.CanvasTexture(c);
     const mat = new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false});
-    const sun = new THREE.Sprite(mat);
-    sun.scale.set(160,160,1);
-    sun.position.set(180,260,120);
-    scene.add(sun);
+    sunSprite = new THREE.Sprite(mat);
+    sunSprite.scale.set(160,160,1);
+    sunSprite.position.set(180,260,120);
+    scene.add(sunSprite);
+  })();
+
+  // luna (visible solo en modo noche)
+  let moonSprite;
+  (function(){
+    const c = document.createElement('canvas'); c.width=128; c.height=128;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(64,64,0,64,64,64);
+    g.addColorStop(0,'rgba(228,236,255,1)');
+    g.addColorStop(0.4,'rgba(200,215,255,0.7)');
+    g.addColorStop(1,'rgba(200,215,255,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,128,128);
+    const tex = new THREE.CanvasTexture(c);
+    const mat = new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false});
+    moonSprite = new THREE.Sprite(mat);
+    moonSprite.scale.set(110,110,1);
+    moonSprite.position.set(-200,240,-140);
+    moonSprite.visible = false;
+    scene.add(moonSprite);
+  })();
+
+  // estrellas (visibles solo en modo noche)
+  let stars;
+  (function(){
+    const starCount = 500;
+    const positions = new Float32Array(starCount*3);
+    for(let i=0;i<starCount;i++){
+      const r = 700 + Math.random()*300;
+      const theta = Math.random()*Math.PI*2;
+      const phi = Math.random()*Math.PI*0.55;
+      positions[i*3]   = r*Math.sin(phi)*Math.cos(theta);
+      positions[i*3+1] = 120 + r*Math.cos(phi)*0.6;
+      positions[i*3+2] = r*Math.sin(phi)*Math.sin(theta);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+    const mat = new THREE.PointsMaterial({color:0xffffff, size:1.6, transparent:true, opacity:0.85, sizeAttenuation:false});
+    stars = new THREE.Points(geo, mat);
+    stars.visible = false;
+    scene.add(stars);
   })();
 
   // nubes simples flotando
@@ -323,22 +361,23 @@
     }
   })();
 
-  const camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 1, 2000);
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth/window.innerHeight, 1, 2400);
 
   // luces
-  scene.add(new THREE.HemisphereLight(0xdcefe0, 0x5b4636, 0.65));
-  const sun = new THREE.DirectionalLight(0xfff4da, 1.05);
+  const hemiLight = new THREE.HemisphereLight(0xaed4c6, 0x4a3423, 0.6);
+  scene.add(hemiLight);
+  const sun = new THREE.DirectionalLight(0xfff0d0, 1.18);
   sun.position.set(180, 260, 120);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048,2048);
-  sun.shadow.camera.left = -260; sun.shadow.camera.right = 260;
-  sun.shadow.camera.top = 220; sun.shadow.camera.bottom = -220;
-  sun.shadow.camera.far = 700;
+  sun.shadow.camera.left = -320; sun.shadow.camera.right = 320;
+  sun.shadow.camera.top = 260; sun.shadow.camera.bottom = -260;
+  sun.shadow.camera.far = 760;
   scene.add(sun);
 
   /* ---------- Cámara orbital manual ---------- */
-  const target = new THREE.Vector3(0,6,0);
-  let radius = 340, theta = Math.PI*0.28, phi = Math.PI*0.32;
+  const target = new THREE.Vector3(0,5,0);
+  let radius = 210, theta = Math.PI*0.28, phi = Math.PI*0.37;
   let autoRotate = false, dragging = false, lastX=0, lastY=0;
 
   function updateCamera(){
@@ -362,7 +401,7 @@
   canvas.addEventListener('wheel', e=>{
     e.preventDefault();
     radius += e.deltaY*0.4;
-    radius = Math.max(90, Math.min(560, radius));
+    radius = Math.max(55, Math.min(760, radius));
   }, {passive:false});
   let touchStartDist=null;
   canvas.addEventListener('touchstart', e=>{
@@ -378,7 +417,7 @@
     } else if(e.touches.length===2 && touchStartDist){
       const d = dist(e.touches[0],e.touches[1]);
       radius += (touchStartDist-d)*0.5;
-      radius = Math.max(90, Math.min(560, radius));
+      radius = Math.max(55, Math.min(760, radius));
       touchStartDist = d;
     }
     e.preventDefault();
@@ -421,8 +460,79 @@
     ctx.closePath();
   }
 
+  /* ---------- Utilidades para fusionar geometrías (sin plugins extra) ---------- */
+  function mergeGeometries(geoms){
+    let posLen=0, normLen=0;
+    const nonIndexed = geoms.map(g=> g.index ? g.toNonIndexed() : g);
+    nonIndexed.forEach(g=>{ posLen += g.attributes.position.array.length; normLen += g.attributes.normal.array.length; });
+    const posArr = new Float32Array(posLen), normArr = new Float32Array(normLen);
+    let po=0, no=0;
+    nonIndexed.forEach(g=>{
+      posArr.set(g.attributes.position.array, po); po += g.attributes.position.array.length;
+      normArr.set(g.attributes.normal.array, no); no += g.attributes.normal.array.length;
+    });
+    const merged = new THREE.BufferGeometry();
+    merged.setAttribute('position', new THREE.BufferAttribute(posArr,3));
+    merged.setAttribute('normal', new THREE.BufferAttribute(normArr,3));
+    return merged;
+  }
+  function transformGeo(geo, opts){
+    opts = opts||{};
+    const pos = opts.pos||[0,0,0], rot = opts.rot||[0,0,0], scl = opts.scale||[1,1,1];
+    const g = geo.clone();
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rot[0],rot[1],rot[2]));
+    m.compose(new THREE.Vector3(pos[0],pos[1],pos[2]), q, new THREE.Vector3(scl[0],scl[1],scl[2]));
+    g.applyMatrix4(m);
+    return g;
+  }
+
+  /* ---------- Geometrías de cultivos realistas (una "planta molde" por tipo, luego instanciada) ---------- */
+  function buildLettuceGeometry(){
+    const parts = [transformGeo(new THREE.SphereGeometry(0.5,8,6), {pos:[0,0.42,0], scale:[1,0.72,1]})];
+    const leaves = 7;
+    for(let i=0;i<leaves;i++){
+      const a = (i/leaves)*Math.PI*2;
+      parts.push(transformGeo(new THREE.SphereGeometry(0.4,7,5), {
+        pos:[Math.cos(a)*0.5, 0.26+(i%2)*0.05, Math.sin(a)*0.5],
+        rot:[0,a,0.35], scale:[1.25,0.55,1.1]
+      }));
+    }
+    return mergeGeometries(parts);
+  }
+  function buildTomatoFoliageGeometry(){
+    const parts = [transformGeo(new THREE.CylinderGeometry(0.09,0.14,2.5,6), {pos:[0,1.25,0]})];
+    const clusters = 5;
+    for(let i=0;i<clusters;i++){
+      const h = 0.85 + i*0.42, r = 0.58 - i*0.06, ang = i*2.35;
+      parts.push(transformGeo(new THREE.SphereGeometry(r,7,5), {pos:[Math.cos(ang)*0.3,h,Math.sin(ang)*0.3], scale:[1.3,0.85,1.3]}));
+    }
+    return mergeGeometries(parts);
+  }
+  function buildTomatoFruitGeometry(){
+    const parts = [];
+    const spots = [[0.46,0.9,0.16],[-0.34,1.25,0.42],[0.24,1.65,-0.4],[-0.42,2.0,0.1],[0.1,1.05,-0.46],[0.38,1.9,0.3]];
+    spots.forEach(p=> parts.push(transformGeo(new THREE.SphereGeometry(0.24,10,8), {pos:p})));
+    return mergeGeometries(parts);
+  }
+  function buildPepperFoliageGeometry(){
+    const parts = [transformGeo(new THREE.CylinderGeometry(0.08,0.12,1.9,6), {pos:[0,0.95,0]})];
+    const clusters = 4;
+    for(let i=0;i<clusters;i++){
+      const h = 0.65 + i*0.38, r = 0.5 - i*0.05, ang = i*2.1;
+      parts.push(transformGeo(new THREE.SphereGeometry(r,7,5), {pos:[Math.cos(ang)*0.28,h,Math.sin(ang)*0.28], scale:[1.25,0.85,1.25]}));
+    }
+    return mergeGeometries(parts);
+  }
+  function buildPepperFruitGeometry(){
+    const parts = [];
+    const spots = [[0.36,0.55,0.1,0.2],[-0.3,0.9,0.34,-0.4],[0.14,1.32,-0.36,0.5],[-0.2,0.48,-0.28,-0.2]];
+    spots.forEach(p=> parts.push(transformGeo(new THREE.BoxGeometry(0.3,0.36,0.26), {pos:[p[0],p[1],p[2]], rot:[0.18,p[3],0.12]})));
+    return mergeGeometries(parts);
+  }
+
   /* ---------- Terreno: 12 lotes de 1 ha (100m x 100m) => 4 x 3 = 12 ha ---------- */
-  const COLS = 4, ROWS = 3, CELL = 92, GAP = 6;
+  const COLS = 4, ROWS = 3, CELL = 132, GAP = 8;
   const fieldW = COLS*(CELL+GAP), fieldD = ROWS*(CELL+GAP);
   const originX = -fieldW/2 + (CELL+GAP)/2;
   const originZ = -fieldD/2 + (CELL+GAP)/2;
@@ -431,12 +541,12 @@
   const grassTex = (function(){
     const c = document.createElement('canvas'); c.width=256; c.height=256;
     const ctx = c.getContext('2d');
-    ctx.fillStyle = '#7fa15f'; ctx.fillRect(0,0,256,256);
-    for(let i=0;i<3200;i++){
+    ctx.fillStyle = '#2f9440'; ctx.fillRect(0,0,256,256);
+    for(let i=0;i<4200;i++){
       const x = Math.random()*256, y = Math.random()*256;
       const shade = Math.random();
-      ctx.fillStyle = shade>0.66 ? 'rgba(150,185,110,0.5)' : shade>0.33 ? 'rgba(95,135,70,0.5)' : 'rgba(65,100,50,0.4)';
-      ctx.fillRect(x, y, 2+Math.random()*2, 2+Math.random()*2);
+      ctx.fillStyle = shade>0.72 ? 'rgba(150,224,80,0.6)' : shade>0.42 ? 'rgba(34,150,50,0.6)' : shade>0.12 ? 'rgba(15,94,36,0.55)' : 'rgba(96,84,40,0.3)';
+      ctx.fillRect(x, y, 2+Math.random()*2.4, 2+Math.random()*2.4);
     }
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -466,9 +576,9 @@
   }
 
   const cropTypes = [
-    {name:'Lechuga', color:0x5aa84c, height:2.4, shape:'sphere'},
-    {name:'Tomate',  color:0xb8482f, height:3.4, shape:'cone'},
-    {name:'Pimiento',color:0xd98a2b, height:2.9, shape:'cone'}
+    {name:'Lechuga',  foliageColor:0x74b43c, foliageGeo:buildLettuceGeometry(),      fruitGeo:null,                     fruitColor:null},
+    {name:'Tomate',   foliageColor:0x2f7d3a, foliageGeo:buildTomatoFoliageGeometry(),fruitGeo:buildTomatoFruitGeometry(),fruitColor:0xe23324},
+    {name:'Pimiento', foliageColor:0x3d7a24, foliageGeo:buildPepperFoliageGeometry(),fruitGeo:buildPepperFruitGeometry(),fruitColor:0xf4c430}
   ];
 
   const rowLetters = ['A','B','C'];
@@ -510,39 +620,45 @@
       group.add(f);
     }
 
-    // cultivos: instancedMesh
+    // cultivos: follaje + (opcional) fruto, instanciados sobre las mismas posiciones de planta
     const perRow = 8, nRows = rows;
     const count = perRow*nRows;
-    let geo;
-    if(crop.shape==='sphere') geo = new THREE.SphereGeometry(1.15, 8, 6);
-    else geo = new THREE.ConeGeometry(1.05, crop.height, 7);
-    const mat = new THREE.MeshStandardMaterial({color:crop.color, roughness:0.85});
-    const inst = new THREE.InstancedMesh(geo, mat, count);
-    inst.castShadow = true;
-    inst.receiveShadow = true;
     const dummy = new THREE.Object3D();
-    let idx=0;
+    const matrices = [];
     for(let i=0;i<nRows;i++){
       const z = -size/2 + 6 + i*((size-12)/(nRows-1));
       for(let j=0;j<perRow;j++){
         const x = -size/2 + 8 + j*((size-16)/(perRow-1)) + (Math.random()-0.5)*2.4;
-        dummy.position.set(x, crop.height*0.42, z + (Math.random()-0.5)*1.2);
-        const s = 0.75 + Math.random()*0.5;
-        dummy.scale.set(s, s*(0.85+Math.random()*0.3), s);
-        dummy.rotation.y = Math.random()*Math.PI;
+        dummy.position.set(x, 0, z + (Math.random()-0.5)*1.2);
+        const s = 0.85 + Math.random()*0.45;
+        dummy.scale.set(s, s*(0.9+Math.random()*0.25), s);
+        dummy.rotation.y = Math.random()*Math.PI*2;
         dummy.updateMatrix();
-        inst.setMatrixAt(idx, dummy.matrix);
-        idx++;
+        matrices.push(dummy.matrix.clone());
       }
     }
-    group.add(inst);
+
+    const foliageMat = new THREE.MeshStandardMaterial({color:crop.foliageColor, roughness:0.82});
+    const foliageInst = new THREE.InstancedMesh(crop.foliageGeo, foliageMat, count);
+    foliageInst.castShadow = true;
+    foliageInst.receiveShadow = true;
+    matrices.forEach((m,i)=> foliageInst.setMatrixAt(i, m));
+    group.add(foliageInst);
+
+    if(crop.fruitGeo){
+      const fruitMat = new THREE.MeshStandardMaterial({color:crop.fruitColor, roughness:0.32});
+      const fruitInst = new THREE.InstancedMesh(crop.fruitGeo, fruitMat, count);
+      fruitInst.castShadow = true;
+      matrices.forEach((m,i)=> fruitInst.setMatrixAt(i, m));
+      group.add(fruitInst);
+    }
 
     // etiqueta del lote
     const lbl = makeLabel(`LOTE ${label} · ${crop.name}`, {scale:0.85, color:'#eef4ef'});
     lbl.position.set(0, 16, 0);
     group.add(lbl);
 
-    return {label, cx, cz, mat, baseColor:crop.color};
+    return {label, cx, cz, mat:foliageMat, baseColor:crop.foliageColor};
   }
 
   /* ---------- Cerca perimetral ---------- */
@@ -609,6 +725,36 @@
       tree.scale.setScalar(0.8+Math.random()*0.6);
       scene.add(tree);
     }
+  })();
+
+  /* ---------- Arbustos dispersos alrededor del campo ---------- */
+  (function(){
+    const bushGeo = mergeGeometries([
+      transformGeo(new THREE.SphereGeometry(1,7,5), {pos:[0,0.5,0], scale:[1.3,0.9,1.3]}),
+      transformGeo(new THREE.SphereGeometry(0.8,7,5), {pos:[0.62,0.34,0.28]}),
+      transformGeo(new THREE.SphereGeometry(0.75,7,5), {pos:[-0.56,0.4,-0.24]}),
+      transformGeo(new THREE.SphereGeometry(0.68,7,5), {pos:[0.1,0.3,-0.6]}),
+      transformGeo(new THREE.SphereGeometry(0.62,7,5), {pos:[-0.3,0.32,0.58]})
+    ]);
+    const bushMat = new THREE.MeshStandardMaterial({color:0x2b7a2e, roughness:0.95});
+    const count = 46;
+    const bushInst = new THREE.InstancedMesh(bushGeo, bushMat, count);
+    bushInst.castShadow = true; bushInst.receiveShadow = true;
+    const dummy = new THREE.Object3D();
+    const halfW = fieldW/2 + 18, halfD = fieldD/2 + 18;
+    for(let i=0;i<count;i++){
+      const ringPick = Math.random();
+      let x,z;
+      if(ringPick<0.5){ x=(Math.random()-0.5)*(fieldW+56); z = Math.random()<0.5 ? -halfD-Math.random()*12 : halfD+Math.random()*12; }
+      else { z=(Math.random()-0.5)*(fieldD+56); x = Math.random()<0.5 ? -halfW-Math.random()*12 : halfW+Math.random()*12; }
+      const s = 1.1+Math.random()*1.5;
+      dummy.position.set(x,0,z);
+      dummy.rotation.y = Math.random()*Math.PI*2;
+      dummy.scale.set(s, s*(0.8+Math.random()*0.3), s);
+      dummy.updateMatrix();
+      bushInst.setMatrixAt(i, dummy.matrix);
+    }
+    scene.add(bushInst);
   })();
 
   /* ---------- Silo de almacenamiento ---------- */
@@ -801,6 +947,32 @@
     btnNetwork.classList.toggle('active', networkGroup.visible);
     netInfo.classList.toggle('show', networkGroup.visible);
   });
+
+  /* ---------- Modo Noche: cambia cielo, niebla y luces para resaltar la red IoT ---------- */
+  const btnNight = document.getElementById('btnNight');
+  const NIGHT_HEMI = {sky:0x27374d, ground:0x0a0d12, intensity:0.3};
+  const DAY_HEMI   = {sky:0xaed4c6, ground:0x4a3423, intensity:0.6};
+  const NIGHT_SUN  = {color:0x8fa8d6, intensity:0.22};
+  const DAY_SUN    = {color:0xfff0d0, intensity:1.18};
+  let isNight = false;
+  function setNight(night){
+    isNight = night;
+    scene.background = new THREE.Color(night ? NIGHT_SKY : DAY_SKY);
+    const f = night ? NIGHT_FOG : DAY_FOG;
+    scene.fog.color.setHex(f.color); scene.fog.near = f.near; scene.fog.far = f.far;
+    const h = night ? NIGHT_HEMI : DAY_HEMI;
+    hemiLight.color.setHex(h.sky); hemiLight.groundColor.setHex(h.ground); hemiLight.intensity = h.intensity;
+    const s = night ? NIGHT_SUN : DAY_SUN;
+    sun.color.setHex(s.color); sun.intensity = s.intensity;
+    groundMat.color.setHex(night ? 0x445a52 : 0xffffff);
+    sunSprite.visible = !night;
+    moonSprite.visible = night;
+    stars.visible = night;
+    clouds.forEach(cl=> cl.visible = !night);
+    btnNight.classList.toggle('active', night);
+    btnNight.textContent = night ? '☀️ Modo Día' : '🌙 Modo Noche';
+  }
+  btnNight.addEventListener('click', ()=> setNight(!isNight));
 
   /* ---------- Plataforma de visualización de datos: iconos en vivo ---------- */
   const valTemp = document.getElementById('valTemp');
