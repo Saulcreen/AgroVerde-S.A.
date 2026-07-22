@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AgroVerde S.A. — Campo de 12 Hectáreas</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap');
 
   :root{
     --tech:#22d3c7;
@@ -62,52 +62,125 @@
   #controls button:hover{background:rgba(34,211,199,.18);}
   #controls button.active{background:rgba(34,211,199,.35);border-color:var(--tech);}
 
-  #monitorPanel{
-    position:fixed;top:18px;right:18px;z-index:5;width:300px;
-    background:var(--panel-bg);border:1px solid var(--panel-border);
-    border-radius:14px;backdrop-filter:blur(10px);
-    box-shadow:0 12px 40px rgba(0,0,0,.45);
-    display:none;
-  }
-  #monitorPanel.show{display:block;}
-  .mon-head{
-    display:flex;align-items:center;gap:8px;padding:12px 14px;
-    border-bottom:1px solid rgba(255,255,255,.08);
-  }
-  .mon-head b{font-size:12px;letter-spacing:1px;text-transform:uppercase;font-weight:600;flex:1;}
-  .mon-head small{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-dim);}
-  .mon-head .dot{
-    display:inline-block;width:7px;height:7px;border-radius:50%;
-    background:var(--tech);box-shadow:0 0 8px var(--tech);
-    animation:pulse 1.6s ease-in-out infinite;
-  }
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
-  #monLog{
-    max-height:180px;overflow-y:auto;padding:8px 12px;
-    font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-dim);
-    line-height:1.6;
-    scrollbar-width:none;-ms-overflow-style:none;
+  /* ---------- Monitor: pestaña de pantalla completa tipo "pizarra de campo" ---------- */
+  #monitorPanel{
+    position:fixed;inset:0;z-index:50;display:none;
+    align-items:center;justify-content:center;padding:clamp(14px,3vw,36px);
   }
-  #monLog::-webkit-scrollbar{display:none;width:0;height:0;}
-  #monLog .line{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  #monLog .line b{color:var(--tech);font-weight:600;}
-  #monLog .line.alert b{color:var(--red);}
-  #monLog .line.warn b{color:var(--amber);}
+  #monitorPanel.show{display:flex;}
+  #monitorPanel::before{
+    content:'';position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse at 15% 10%, rgba(255,255,255,.05), transparent 55%),
+      radial-gradient(ellipse at 85% 90%, rgba(34,211,199,.06), transparent 55%),
+      #123430;
+  }
+  .monBoard{
+    position:relative;width:min(1200px,96vw);height:min(760px,92vh);
+    background:
+      radial-gradient(circle at 18% 12%, rgba(255,255,255,.045), transparent 50%),
+      #1b423b;
+    border:1px solid rgba(34,211,199,.22);
+    border-radius:20px;
+    box-shadow:0 40px 100px rgba(0,0,0,.55), inset 0 0 70px rgba(0,0,0,.35);
+    padding:24px clamp(16px,3vw,34px) 22px;
+    display:flex;flex-direction:column;
+    overflow:hidden;
+    animation:monIn .32s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes monIn{from{opacity:0;transform:scale(.97) translateY(8px);}to{opacity:1;transform:none;}}
+  .monBoard::after{
+    content:'';position:absolute;inset:0;pointer-events:none;opacity:.55;mix-blend-mode:overlay;
+    background-image:radial-gradient(rgba(255,255,255,.5) .6px, transparent .6px);
+    background-size:3.5px 3.5px;
+  }
 
-  #monAlerts{border-top:1px solid rgba(255,255,255,.08);padding:10px 14px 12px;}
-  .mon-title{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-dim);margin-bottom:6px;}
+  .monCloseBtn{
+    position:absolute;top:16px;right:16px;z-index:3;
+    width:36px;height:36px;border-radius:50%;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);
+    color:var(--ink);font-size:15px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s ease,border-color .15s ease,transform .15s ease;
+  }
+  .monCloseBtn:hover{background:rgba(226,84,63,.32);border-color:var(--red);transform:rotate(90deg);}
+
+  .monHeader{position:relative;z-index:1;display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .monHeader .liveTag{
+    display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:var(--tech);white-space:nowrap;
+  }
+  .monHeader .liveTag .dot{
+    display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--tech);box-shadow:0 0 8px var(--tech);animation:pulse 1.6s ease-in-out infinite;
+  }
+  .monHeader h1{
+    flex:1;text-align:center;margin:0;
+    font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(20px,2.6vw,30px);
+    letter-spacing:.3px;color:var(--ink);
+  }
+  .monHeader #monClock{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-dim);white-space:nowrap;}
+
+  .monGrid{position:relative;z-index:1;flex:1;min-height:0;display:grid;grid-template-columns:270px 1fr;gap:20px;}
+  @media (max-width:760px){.monGrid{grid-template-columns:1fr;}}
+
+  .monColAlerts{display:flex;flex-direction:column;min-height:0;}
+  .paperTab{
+    position:relative;align-self:flex-start;max-width:100%;
+    background:
+      linear-gradient(rgba(255,255,255,.94),rgba(255,255,255,.9)),
+      repeating-linear-gradient(0deg, rgba(0,0,0,.05) 0 1px, transparent 1px 13px),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 1px, transparent 1px 13px);
+    color:#ad3327;font-family:'IBM Plex Mono',monospace;font-weight:600;
+    font-size:15px;line-height:1.35;letter-spacing:.3px;
+    padding:12px 20px 14px;margin:2px 0 14px -4px;
+    transform:rotate(-1.4deg);
+    box-shadow:0 8px 18px rgba(0,0,0,.32);
+    clip-path:polygon(
+      0% 18%, 4% 2%, 10% 12%, 16% 0%, 23% 10%, 30% 1%, 37% 11%, 44% 2%, 51% 10%, 58% 1%,
+      65% 11%, 72% 2%, 79% 10%, 86% 0%, 93% 11%, 100% 3%,
+      100% 82%, 96% 98%, 90% 88%, 84% 100%, 77% 90%, 70% 99%, 63% 89%, 56% 100%, 49% 90%,
+      42% 99%, 35% 89%, 28% 100%, 21% 90%, 14% 99%, 7% 88%, 0% 97%
+    );
+  }
+  .monAlertsCard{
+    flex:1;min-height:0;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;padding:12px;display:flex;flex-direction:column;
+  }
+  .mon-title{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-dim);margin-bottom:8px;flex:0 0 auto;}
   #monAlertList{
-    list-style:none;margin:0;padding:0;max-height:100px;overflow-y:auto;
+    list-style:none;margin:0;padding:0;flex:1;min-height:0;overflow-y:auto;
     scrollbar-width:none;-ms-overflow-style:none;
   }
   #monAlertList::-webkit-scrollbar{display:none;width:0;height:0;}
   #monAlertList li{
-    font-size:11.5px;padding:5px 8px;margin-bottom:5px;border-radius:8px;
-    background:rgba(226,84,63,.12);border:1px solid rgba(226,84,63,.3);color:#ffd9d0;line-height:1.3;
+    font-size:12.5px;padding:8px 10px;margin-bottom:6px;border-radius:9px;
+    background:rgba(226,84,63,.14);border:1px solid rgba(226,84,63,.32);color:#ffd9d0;line-height:1.4;
   }
-  #monAlertList li.warn{background:rgba(242,165,65,.12);border-color:rgba(242,165,65,.3);color:#ffe6bd;}
-  #monAlertList .mon-empty{color:var(--ink-dim);background:none;border:none;}
+  #monAlertList li.warn{background:rgba(242,165,65,.14);border-color:rgba(242,165,65,.32);color:#ffe6bd;}
+  #monAlertList .mon-empty{color:var(--ink-dim);background:none;border:none;padding-left:0;}
+
+  .monColLog{
+    min-height:0;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;padding:14px 16px 12px;display:flex;flex-direction:column;
+  }
+  .monColHeader{
+    flex:0 0 auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:2px;
+    text-transform:uppercase;color:var(--ink-dim);margin-bottom:10px;
+  }
+  #monLog{
+    flex:1;min-height:0;overflow-y:auto;padding-right:4px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-dim);
+    line-height:1.85;
+    scrollbar-width:none;-ms-overflow-style:none;
+  }
+  #monLog::-webkit-scrollbar{display:none;width:0;height:0;}
+  #monLog .line{white-space:normal;border-bottom:1px dashed rgba(255,255,255,.06);padding:3px 0;}
+  #monLog .line b{color:var(--tech);font-weight:600;}
+  #monLog .line.alert b{color:var(--red);}
+  #monLog .line.warn b{color:var(--amber);}
 
   #legend{
     position:fixed;bottom:18px;right:18px;z-index:5;
@@ -147,11 +220,26 @@
 </div>
 
 <div id="monitorPanel">
-  <div class="mon-head"><span class="dot"></span><b>Sistema de Monitoreo IoT</b><small id="monClock">t+00:00</small></div>
-  <div id="monLog"></div>
-  <div id="monAlerts">
-    <div class="mon-title">Alertas detectadas</div>
-    <ul id="monAlertList"><li class="mon-empty">Sin riesgos detectados…</li></ul>
+  <div class="monBoard">
+    <button id="monClose" class="monCloseBtn" aria-label="Cerrar monitor" title="Cerrar">✕</button>
+    <div class="monHeader">
+      <span class="liveTag"><span class="dot"></span>En vivo</span>
+      <h1>Sistema de Monitoreo IoT</h1>
+      <small id="monClock">t+00:00</small>
+    </div>
+    <div class="monGrid">
+      <div class="monColAlerts">
+        <div class="paperTab">Alertas<br>Detectadas</div>
+        <div class="monAlertsCard">
+          <div class="mon-title">Riesgos por lote</div>
+          <ul id="monAlertList"><li class="mon-empty">Sin riesgos detectados…</li></ul>
+        </div>
+      </div>
+      <div class="monColLog">
+        <div class="monColHeader">Registro de transmisión · 12 lotes</div>
+        <div id="monLog"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -748,11 +836,16 @@
   /* ---------- Sistema de Monitoreo: toggle + simulación de captura y envío ---------- */
   const btnMonitor = document.getElementById('btnMonitor');
   const monitorPanel = document.getElementById('monitorPanel');
-  btnMonitor.addEventListener('click', ()=>{
-    monitoringGroup.visible = !monitoringGroup.visible;
-    btnMonitor.classList.toggle('active', monitoringGroup.visible);
-    monitorPanel.classList.toggle('show', monitoringGroup.visible);
-  });
+  const monCloseBtn = document.getElementById('monClose');
+  function setMonitorOpen(open){
+    monitoringGroup.visible = open;
+    btnMonitor.classList.toggle('active', open);
+    monitorPanel.classList.toggle('show', open);
+  }
+  btnMonitor.addEventListener('click', ()=> setMonitorOpen(!monitoringGroup.visible));
+  monCloseBtn.addEventListener('click', ()=> setMonitorOpen(false));
+  monitorPanel.addEventListener('click', e=>{ if(e.target===monitorPanel) setMonitorOpen(false); });
+  window.addEventListener('keydown', e=>{ if(e.key==='Escape' && monitoringGroup.visible) setMonitorOpen(false); });
 
   const monLogEl = document.getElementById('monLog');
   const monAlertListEl = document.getElementById('monAlertList');
