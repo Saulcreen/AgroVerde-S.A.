@@ -1095,27 +1095,36 @@
   const iconTemp = document.getElementById('iconTemp');
   const iconLuz = document.getElementById('iconLuz');
 
-  let simTemp = 24, simLuz = 650, simHum = 55;
+  let simTemp = 24, simLuz = 650, simHum = 42;
   function randWalk(v, min, max, step){
     v += (Math.random()-0.5)*step;
     return Math.max(min, Math.min(max, v));
   }
   function updateDataViz(){
-    // de noche baja la temperatura, de día sube
-    const tempMin = isNight ? 8   : 20;
-    const tempMax = isNight ? 20  : 36;
-    simTemp = randWalk(simTemp, tempMin, tempMax, 2.2);
+    // de día la temperatura va de 24°C a 36°C, fluctuando libremente
+    // de noche baja y se mantiene baja (tiende al fondo del rango 18–24°C, sin volver a subir del todo)
+    if(isNight){
+      const nightTarget = 18 + Math.random()*2.5; // ronda cerca del mínimo
+      simTemp += (nightTarget - simTemp) * 0.1;
+      simTemp = Math.max(18, Math.min(24, simTemp));
+    } else {
+      simTemp = randWalk(simTemp, 24, 36, 2.2);
+    }
 
     // de noche casi no hay luz (favorece la luna), de día hay mucha (favorece el sol)
     const luzMin = isNight ? 0   : 300;
     const luzMax = isNight ? 120 : 1000;
     simLuz = randWalk(simLuz, luzMin, luzMax, 90);
 
-    // la humedad sube mientras los dispensadores estén regando
+    // humedad: se basa en el promedio real de los 12 lotes (dato del sistema de monitoreo).
+    // de día no pasa de 57%; de noche puede subir más, y los dispensadores la suben un poco extra.
+    const avgFieldHum = monNodes.reduce((sum,n)=> sum + n.humedad, 0) / monNodes.length;
     let activeDispensers = 0;
     dispensers.forEach(d=>{ if(isDispenserActive(d.plotIndex)) activeDispensers++; });
-    simHum = randWalk(simHum, 15, 95, 8);
-    if(activeDispensers > 0) simHum = Math.min(95, simHum + activeDispensers*1.7);
+    let targetHum = avgFieldHum + (isNight ? 10 : 0) + activeDispensers*1.1;
+    const humMax = isNight ? 80 : 57;
+    targetHum = Math.max(20, Math.min(humMax, targetHum));
+    simHum += (targetHum - simHum) * 0.15;
 
     valTemp.textContent = `${simTemp.toFixed(0)}°C`;
     valHum.textContent  = `${simHum.toFixed(0)}%`;
