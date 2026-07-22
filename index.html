@@ -979,7 +979,7 @@
 
   const pipeMat = new THREE.MeshStandardMaterial({color:0x5a615a, metalness:0.35, roughness:0.55});
   const nozzleMat = new THREE.MeshStandardMaterial({color:0x2e332e, metalness:0.5, roughness:0.4});
-  const dropGeo = new THREE.SphereGeometry(0.16,6,5);
+  const dropGeo = new THREE.SphereGeometry(0.55,8,7);
 
   const dispensers = [];
   plotRefs.forEach((plot, idx)=>{
@@ -1006,17 +1006,24 @@
     led.position.set(0,0.55,0.35);
     headGroup.add(led);
 
+    // cono de agua visible saliendo del aspersor (da volumen al chorro)
+    const jetMat = new THREE.MeshBasicMaterial({color:0xcdeeff, transparent:true, opacity:0, side:THREE.DoubleSide});
+    const jet = new THREE.Mesh(new THREE.ConeGeometry(1.8, 8.5, 12, 1, true), jetMat);
+    jet.rotation.x = Math.PI/2.1;
+    jet.position.set(1.3, -0.4, 0);
+    headGroup.add(jet);
+
     const drops = [];
-    const dropCount = 9;
+    const dropCount = 26;
     for(let i=0;i<dropCount;i++){
-      const mat = new THREE.MeshBasicMaterial({color:0x8fd8ff, transparent:true, opacity:0.85});
+      const mat = new THREE.MeshBasicMaterial({color:0x9fe2ff, transparent:true, opacity:0.9});
       const d = new THREE.Mesh(dropGeo, mat);
       d.visible = false;
       g.add(d);
       drops.push({mesh:d, angle: (i/dropCount)*Math.PI*1.6 - 0.8 + Math.PI*0.5, phase: Math.random()});
     }
 
-    dispensers.push({group:g, headGroup, led, drops, plotIndex:idx});
+    dispensers.push({group:g, headGroup, led, jet, drops, plotIndex:idx});
   });
 
   let dispenserMode = 'auto'; // 'auto' | 'on' | 'off'
@@ -1239,15 +1246,29 @@
       const ledColor = active ? 0x22d3c7 : 0x2c3b33;
       disp.led.material.color.setHex(ledColor);
       disp.led.material.emissive.setHex(active ? 0x22d3c7 : 0x000000);
-      if(active) disp.headGroup.rotation.y = Math.sin(nowT*1.4)*0.9;
+      if(active){
+        disp.headGroup.rotation.y = Math.sin(nowT*1.4)*0.9;
+        disp.jet.material.opacity = 0.38 + Math.sin(nowT*9)*0.1;
+        disp.jet.scale.set(1.15, 0.95 + Math.sin(nowT*7)*0.12, 1.15);
+      } else {
+        disp.jet.material.opacity = 0;
+      }
       disp.drops.forEach(drop=>{
         if(!active){ drop.mesh.visible = false; return; }
         drop.mesh.visible = true;
-        const tt = ((nowT*0.55) + drop.phase) % 1;
-        const dist = tt*4.2;
-        const height = 3.5 + tt*2.4 - tt*tt*5.2;
-        drop.mesh.position.set(Math.cos(drop.angle)*dist, Math.max(height,0.15), Math.sin(drop.angle)*dist);
-        drop.mesh.material.opacity = 0.85*(1-tt);
+        const tt = ((nowT*0.5) + drop.phase) % 1;
+        const dist = tt*9.5;
+        const height = 4 + tt*4.6 - tt*tt*8.2;
+        const prevTt = Math.max(tt-0.03, 0);
+        const prevDist = prevTt*9.5;
+        const prevHeight = 4 + prevTt*4.6 - prevTt*prevTt*8.2;
+        const pos = new THREE.Vector3(Math.cos(drop.angle)*dist, Math.max(height,0.15), Math.sin(drop.angle)*dist);
+        const prevPos = new THREE.Vector3(Math.cos(drop.angle)*prevDist, Math.max(prevHeight,0.15), Math.sin(drop.angle)*prevDist);
+        drop.mesh.position.copy(pos);
+        drop.mesh.lookAt(prevPos);
+        const grow = 0.9 + tt*1.2;
+        drop.mesh.scale.set(grow, grow, grow*(1.8 + tt*1.6));
+        drop.mesh.material.opacity = 0.92*(1-tt*0.8);
       });
     });
 
