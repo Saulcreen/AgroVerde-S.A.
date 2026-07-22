@@ -248,11 +248,13 @@
   <button id="btnNetwork">Arquitectura de Red</button>
   <button id="btnMonitor">Sistema de Monitoreo</button>
   <button id="btnNight">🌙 Modo Noche</button>
+  <button id="btnDispenser">💧 Riego: Automático</button>
 </div>
 
 <div id="legend">
   <div><b>12</b> lotes de 1 ha</div>
   <div><b>3</b> variedades de hortalizas</div>
+  <div><b>12</b> dispensadores de riego</div>
 </div>
 
 <div id="hint">arrastra para rotar · scroll para zoom</div>
@@ -971,6 +973,72 @@
     });
   });
 
+  /* ---------- Dispensadores de riego (aspersores) por lote ---------- */
+  const dispenserGroup = new THREE.Group();
+  scene.add(dispenserGroup);
+
+  const pipeMat = new THREE.MeshStandardMaterial({color:0x5a615a, metalness:0.35, roughness:0.55});
+  const nozzleMat = new THREE.MeshStandardMaterial({color:0x2e332e, metalness:0.5, roughness:0.4});
+  const dropGeo = new THREE.SphereGeometry(0.16,6,5);
+
+  const dispensers = [];
+  plotRefs.forEach((plot, idx)=>{
+    const g = new THREE.Group();
+    // ubicado en una esquina del lote, lejos del poste de monitoreo (que está en el centro)
+    g.position.set(plot.cx - CELL/2 + 12, 0, plot.cz - CELL/2 + 12);
+    dispenserGroup.add(g);
+
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.42,3.4,8), pipeMat);
+    pipe.position.y = 1.7; pipe.castShadow = true;
+    g.add(pipe);
+
+    const headGroup = new THREE.Group();
+    headGroup.position.y = 3.5;
+    g.add(headGroup);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.5,10,8), nozzleMat);
+    headGroup.add(head);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.9,6), nozzleMat);
+    arm.rotation.z = Math.PI/2; arm.position.x = 0.5;
+    headGroup.add(arm);
+
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.16,6,6), new THREE.MeshStandardMaterial({color:0x2c3b33, emissive:0x000000}));
+    led.position.set(0,0.55,0.35);
+    headGroup.add(led);
+
+    const drops = [];
+    const dropCount = 9;
+    for(let i=0;i<dropCount;i++){
+      const mat = new THREE.MeshBasicMaterial({color:0x8fd8ff, transparent:true, opacity:0.85});
+      const d = new THREE.Mesh(dropGeo, mat);
+      d.visible = false;
+      g.add(d);
+      drops.push({mesh:d, angle: (i/dropCount)*Math.PI*1.6 - 0.8 + Math.PI*0.5, phase: Math.random()});
+    }
+
+    dispensers.push({group:g, headGroup, led, drops, plotIndex:idx});
+  });
+
+  let dispenserMode = 'auto'; // 'auto' | 'on' | 'off'
+  function isDispenserActive(idx){
+    if(dispenserMode==='off') return false;
+    if(dispenserMode==='on') return true;
+    const node = monNodes[idx];
+    return node ? node.humedad < 42 : false; // automático: riega solo cuando el lote está seco
+  }
+
+  const btnDispenser = document.getElementById('btnDispenser');
+  const dispenserLabels = {auto:'💧 Riego: Automático', on:'💧 Riego: Encendido', off:'💧 Riego: Apagado'};
+  function updateDispenserButton(){
+    btnDispenser.textContent = dispenserLabels[dispenserMode];
+    btnDispenser.classList.toggle('active', dispenserMode!=='off');
+  }
+  btnDispenser.addEventListener('click', ()=>{
+    dispenserMode = dispenserMode==='auto' ? 'on' : dispenserMode==='on' ? 'off' : 'auto';
+    updateDispenserButton();
+  });
+  updateDispenserButton();
+
   /* ---------- Controles UI ---------- */
   const btnRotate = document.getElementById('btnRotate');
   btnRotate.addEventListener('click', ()=>{
@@ -1164,6 +1232,24 @@
         p.mesh.position.lerpVectors(p.from, p.to, p.t);
       });
     }
+
+    const nowT = performance.now()*0.001;
+    dispensers.forEach(disp=>{
+      const active = isDispenserActive(disp.plotIndex);
+      const ledColor = active ? 0x22d3c7 : 0x2c3b33;
+      disp.led.material.color.setHex(ledColor);
+      disp.led.material.emissive.setHex(active ? 0x22d3c7 : 0x000000);
+      if(active) disp.headGroup.rotation.y = Math.sin(nowT*1.4)*0.9;
+      disp.drops.forEach(drop=>{
+        if(!active){ drop.mesh.visible = false; return; }
+        drop.mesh.visible = true;
+        const tt = ((nowT*0.55) + drop.phase) % 1;
+        const dist = tt*4.2;
+        const height = 3.5 + tt*2.4 - tt*tt*5.2;
+        drop.mesh.position.set(Math.cos(drop.angle)*dist, Math.max(height,0.15), Math.sin(drop.angle)*dist);
+        drop.mesh.material.opacity = 0.85*(1-tt);
+      });
+    });
 
     renderer.render(scene, camera);
   }
