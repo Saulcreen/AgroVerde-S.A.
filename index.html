@@ -1084,6 +1084,7 @@
     clouds.forEach(cl=> cl.visible = !night);
     btnNight.classList.toggle('active', night);
     btnNight.textContent = night ? '☀️ Modo Día' : '🌙 Modo Noche';
+    updateDataViz();
   }
   btnNight.addEventListener('click', ()=> setNight(!isNight));
 
@@ -1100,9 +1101,21 @@
     return Math.max(min, Math.min(max, v));
   }
   function updateDataViz(){
-    simTemp = randWalk(simTemp, 14, 36, 2.2);
-    simLuz  = randWalk(simLuz, 80, 1000, 90);
-    simHum  = randWalk(simHum, 15, 95, 8);
+    // de noche baja la temperatura, de día sube
+    const tempMin = isNight ? 8   : 20;
+    const tempMax = isNight ? 20  : 36;
+    simTemp = randWalk(simTemp, tempMin, tempMax, 2.2);
+
+    // de noche casi no hay luz (favorece la luna), de día hay mucha (favorece el sol)
+    const luzMin = isNight ? 0   : 300;
+    const luzMax = isNight ? 120 : 1000;
+    simLuz = randWalk(simLuz, luzMin, luzMax, 90);
+
+    // la humedad sube mientras los dispensadores estén regando
+    let activeDispensers = 0;
+    dispensers.forEach(d=>{ if(isDispenserActive(d.plotIndex)) activeDispensers++; });
+    simHum = randWalk(simHum, 15, 95, 8);
+    if(activeDispensers > 0) simHum = Math.min(95, simHum + activeDispensers*1.7);
 
     valTemp.textContent = `${simTemp.toFixed(0)}°C`;
     valHum.textContent  = `${simHum.toFixed(0)}%`;
@@ -1111,9 +1124,9 @@
     // el termómetro cambia de color según la temperatura
     iconTemp.style.filter = simTemp > 30 ? 'hue-rotate(-20deg) saturate(1.4)' : simTemp < 18 ? 'hue-rotate(140deg)' : 'none';
 
-    // sol de día (mucha luz) / luna de noche (poca luz)
-    iconLuz.textContent = simLuz > 350 ? '☀️' : '🌙';
-    iconLuz.style.transform = simLuz > 350 ? 'rotate(0deg)' : 'rotate(-10deg)';
+    // sol de día / luna en modo noche
+    iconLuz.textContent = isNight ? '🌙' : '☀️';
+    iconLuz.style.transform = isNight ? 'rotate(-10deg)' : 'rotate(0deg)';
   }
   updateDataViz();
   setInterval(updateDataViz, 2200);
