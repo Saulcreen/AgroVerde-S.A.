@@ -9,6 +9,8 @@
 
   :root{
     --tech:#22d3c7;
+    --amber:#f2a541;
+    --red:#e2543f;
     --panel-bg:rgba(18,26,22,0.78);
     --panel-border:rgba(34,211,199,0.28);
     --ink:#eef4ef;
@@ -60,6 +62,53 @@
   #controls button:hover{background:rgba(34,211,199,.18);}
   #controls button.active{background:rgba(34,211,199,.35);border-color:var(--tech);}
 
+  #monitorPanel{
+    position:fixed;top:18px;right:18px;z-index:5;width:300px;
+    background:var(--panel-bg);border:1px solid var(--panel-border);
+    border-radius:14px;backdrop-filter:blur(10px);
+    box-shadow:0 12px 40px rgba(0,0,0,.45);
+    display:none;
+  }
+  #monitorPanel.show{display:block;}
+  .mon-head{
+    display:flex;align-items:center;gap:8px;padding:12px 14px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  .mon-head b{font-size:12px;letter-spacing:1px;text-transform:uppercase;font-weight:600;flex:1;}
+  .mon-head small{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-dim);}
+  .mon-head .dot{
+    display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--tech);box-shadow:0 0 8px var(--tech);
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+  #monLog{
+    max-height:180px;overflow-y:auto;padding:8px 12px;
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-dim);
+    line-height:1.6;
+    scrollbar-width:none;-ms-overflow-style:none;
+  }
+  #monLog::-webkit-scrollbar{display:none;width:0;height:0;}
+  #monLog .line{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #monLog .line b{color:var(--tech);font-weight:600;}
+  #monLog .line.alert b{color:var(--red);}
+  #monLog .line.warn b{color:var(--amber);}
+
+  #monAlerts{border-top:1px solid rgba(255,255,255,.08);padding:10px 14px 12px;}
+  .mon-title{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-dim);margin-bottom:6px;}
+  #monAlertList{
+    list-style:none;margin:0;padding:0;max-height:100px;overflow-y:auto;
+    scrollbar-width:none;-ms-overflow-style:none;
+  }
+  #monAlertList::-webkit-scrollbar{display:none;width:0;height:0;}
+  #monAlertList li{
+    font-size:11.5px;padding:5px 8px;margin-bottom:5px;border-radius:8px;
+    background:rgba(226,84,63,.12);border:1px solid rgba(226,84,63,.3);color:#ffd9d0;line-height:1.3;
+  }
+  #monAlertList li.warn{background:rgba(242,165,65,.12);border-color:rgba(242,165,65,.3);color:#ffe6bd;}
+  #monAlertList .mon-empty{color:var(--ink-dim);background:none;border:none;}
+
   #legend{
     position:fixed;bottom:18px;right:18px;z-index:5;
     background:var(--panel-bg);border:1px solid var(--panel-border);
@@ -97,9 +146,19 @@
   </div>
 </div>
 
+<div id="monitorPanel">
+  <div class="mon-head"><span class="dot"></span><b>Sistema de Monitoreo IoT</b><small id="monClock">t+00:00</small></div>
+  <div id="monLog"></div>
+  <div id="monAlerts">
+    <div class="mon-title">Alertas detectadas</div>
+    <ul id="monAlertList"><li class="mon-empty">Sin riesgos detectados…</li></ul>
+  </div>
+</div>
+
 <div id="controls">
   <button id="btnRotate">⟳ Auto-rotar</button>
   <button id="btnNetwork">Arquitectura de Red</button>
+  <button id="btnMonitor">Sistema de Monitoreo</button>
 </div>
 
 <div id="legend">
@@ -325,13 +384,15 @@
   ];
 
   const rowLetters = ['A','B','C'];
+  const plotRefs = [];
   let plotIndex=0;
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
       const cx = originX + c*(CELL+GAP);
       const cz = originZ + r*(CELL+GAP);
       const crop = cropTypes[plotIndex % cropTypes.length];
-      buildPlot(cx, cz, CELL, crop, `${rowLetters[r]}${c+1}`);
+      const plotRef = buildPlot(cx, cz, CELL, crop, `${rowLetters[r]}${c+1}`);
+      plotRefs.push(plotRef);
       plotIndex++;
     }
   }
@@ -392,6 +453,8 @@
     const lbl = makeLabel(`LOTE ${label} · ${crop.name}`, {scale:0.85, color:'#eef4ef'});
     lbl.position.set(0, 16, 0);
     group.add(lbl);
+
+    return {label, cx, cz, mat, baseColor:crop.color};
   }
 
   /* ---------- Cerca perimetral ---------- */
@@ -571,6 +634,71 @@
     packets.push({mesh:packet, from:node.top, to:platformTop, t:Math.random(), speed:0.006+Math.random()*0.004});
   });
 
+  /* ---------- Sistema de Monitoreo IoT: sensores en los 12 lotes + envío de datos ---------- */
+  const monitoringGroup = new THREE.Group();
+  monitoringGroup.visible = false;
+  scene.add(monitoringGroup);
+
+  const monHub = new THREE.Group();
+  monHub.position.set(0,0,0);
+  monitoringGroup.add(monHub);
+  {
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(6,7,2.4,10),
+      new THREE.MeshStandardMaterial({color:0x2c3b33, roughness:0.6})
+    );
+    base.position.y = 1.2; base.receiveShadow = true; base.castShadow = true;
+    monHub.add(base);
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(3,8,3), boxMat);
+    tower.position.y = 6.4; tower.castShadow = true;
+    monHub.add(tower);
+    for(let i=-1;i<=1;i+=2){
+      const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,7,6), ledMat);
+      ant.position.set(i*1.6, 13.8, 0);
+      monHub.add(ant);
+    }
+    const lbl = makeLabel('◆ RECEPTOR DE DATOS', {scale:0.75, color:'#22d3c7'});
+    lbl.position.set(0, 18.5, 0);
+    monHub.add(lbl);
+  }
+  const monHubTop = new THREE.Vector3(0, 13.8, 0);
+
+  const monLinkMat = new THREE.LineDashedMaterial({color:0x22d3c7, dashSize:1.6, gapSize:1.2, transparent:true, opacity:0.5});
+  const monNodes = [];
+  const monPackets = [];
+
+  plotRefs.forEach(plot=>{
+    const g = new THREE.Group();
+    g.position.set(plot.cx, 0, plot.cz);
+    monitoringGroup.add(g);
+
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,9,8), poleMat);
+    pole.position.y = 4.5; pole.castShadow = true;
+    g.add(pole);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(2,1.4,1.4), boxMat);
+    box.position.y = 9.2; box.castShadow = true;
+    g.add(box);
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.32,8,8), ledMat.clone());
+    led.position.set(0,9.9,0.75);
+    g.add(led);
+
+    const top = new THREE.Vector3(plot.cx, 9.9, plot.cz);
+    const geo = new THREE.BufferGeometry().setFromPoints([top, monHubTop]);
+    const line = new THREE.Line(geo, monLinkMat);
+    line.computeLineDistances();
+    monitoringGroup.add(line);
+
+    const packet = new THREE.Mesh(new THREE.SphereGeometry(0.55,8,8), new THREE.MeshBasicMaterial({color:0x22d3c7}));
+    monitoringGroup.add(packet);
+    monPackets.push({mesh:packet, from:top, to:monHubTop, t:Math.random(), speed:0.007+Math.random()*0.005});
+
+    monNodes.push({
+      plot, led,
+      humedad: 45+Math.random()*25, temperatura: 20+Math.random()*8, luz: 400+Math.random()*300,
+      status:'ok'
+    });
+  });
+
   /* ---------- Controles UI ---------- */
   const btnRotate = document.getElementById('btnRotate');
   btnRotate.addEventListener('click', ()=>{
@@ -617,6 +745,89 @@
   updateDataViz();
   setInterval(updateDataViz, 2200);
 
+  /* ---------- Sistema de Monitoreo: toggle + simulación de captura y envío ---------- */
+  const btnMonitor = document.getElementById('btnMonitor');
+  const monitorPanel = document.getElementById('monitorPanel');
+  btnMonitor.addEventListener('click', ()=>{
+    monitoringGroup.visible = !monitoringGroup.visible;
+    btnMonitor.classList.toggle('active', monitoringGroup.visible);
+    monitorPanel.classList.toggle('show', monitoringGroup.visible);
+  });
+
+  const monLogEl = document.getElementById('monLog');
+  const monAlertListEl = document.getElementById('monAlertList');
+  const monClockEl = document.getElementById('monClock');
+  let monSeconds = 0;
+  const plotLabels = ['Norte','Sur','Este','Oeste','Central'];
+
+  function evalPlotAlerts(node){
+    const alerts = [];
+    if(node.humedad < 32) alerts.push({level:'alert', text:`Lote ${node.plot.label}: sequía (${node.humedad.toFixed(0)}% humedad)`});
+    else if(node.humedad > 85) alerts.push({level:'warn', text:`Lote ${node.plot.label}: exceso de humedad (${node.humedad.toFixed(0)}%)`});
+    if(node.temperatura > 32) alerts.push({level:'warn', text:`Lote ${node.plot.label}: estrés térmico (${node.temperatura.toFixed(0)}°C)`});
+    if(node.pestFlag) alerts.push({level:'alert', text:`Lote ${node.plot.label}: posible plaga detectada`});
+    return alerts;
+  }
+
+  function monitorTick(){
+    monSeconds += 3;
+    const mm = String(Math.floor(monSeconds/60)).padStart(2,'0');
+    const ss = String(monSeconds%60).padStart(2,'0');
+    monClockEl.textContent = `t+${mm}:${ss}`;
+
+    const allAlerts = [];
+    const logLines = [];
+    monNodes.forEach(node=>{
+      node.humedad = randWalk(node.humedad, 15, 95, 9);
+      node.temperatura = randWalk(node.temperatura, 14, 36, 2.2);
+      node.luz = randWalk(node.luz, 100, 1000, 90);
+      node.pestFlag = Math.random() < 0.03;
+
+      const a = evalPlotAlerts(node);
+      node.status = a.some(x=>x.level==='alert') ? 'alert' : (a.length? 'warn':'ok');
+      allAlerts.push(...a);
+
+      const c = node.status==='alert' ? 0xe2543f : node.status==='warn' ? 0xf2a541 : 0x22d3c7;
+      node.led.material.color.setHex(c); node.led.material.emissive.setHex(c);
+
+      if(node.plot.mat){
+        let target = node.plot.baseColor;
+        if(node.humedad < 32) target = 0xc9a24a;
+        else if(node.humedad > 85) target = 0x3d6a8a;
+        else if(node.pestFlag) target = 0x7a5a35;
+        node.plot.mat.color.lerp(new THREE.Color(target), 0.35);
+      }
+
+      logLines.push({
+        cls: node.status,
+        text: `[t+${mm}:${ss}] Lote <b>${node.plot.label}</b> → HUM ${node.humedad.toFixed(0)}% · TEMP ${node.temperatura.toFixed(0)}°C · LUZ ${node.luz.toFixed(0)}lx · enviado ✓`
+      });
+    });
+
+    // agregar líneas nuevas al inicio del log, limitar historial
+    logLines.reverse().forEach(l=>{
+      const div = document.createElement('div');
+      div.className = 'line' + (l.cls==='alert'?' alert':l.cls==='warn'?' warn':'');
+      div.innerHTML = l.text;
+      monLogEl.insertBefore(div, monLogEl.firstChild);
+    });
+    while(monLogEl.children.length > 40) monLogEl.removeChild(monLogEl.lastChild);
+
+    monAlertListEl.innerHTML = '';
+    if(!allAlerts.length){
+      monAlertListEl.innerHTML = '<li class="mon-empty">Sin riesgos detectados…</li>';
+    } else {
+      allAlerts.slice(0,6).forEach(a=>{
+        const li = document.createElement('li');
+        if(a.level==='warn') li.className='warn';
+        li.textContent = a.text;
+        monAlertListEl.appendChild(li);
+      });
+    }
+  }
+  monitorTick();
+  setInterval(monitorTick, 3000);
+
   /* ---------- Loop de render ---------- */
   const clock = new THREE.Clock();
   function animate(){
@@ -637,6 +848,14 @@
         node.ring.material.opacity = 0.15 + pulse*0.45;
       });
       packets.forEach(p=>{
+        p.t += p.speed;
+        if(p.t>1) p.t=0;
+        p.mesh.position.lerpVectors(p.from, p.to, p.t);
+      });
+    }
+
+    if(monitoringGroup.visible){
+      monPackets.forEach(p=>{
         p.t += p.speed;
         if(p.t>1) p.t=0;
         p.mesh.position.lerpVectors(p.from, p.to, p.t);
